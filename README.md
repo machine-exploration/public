@@ -1,7 +1,12 @@
 # Machine Exploration
 
-> **A science of intelligence, built from the inside of models.**
-> Models are the first intelligent systems we can fully record, change and replay through their whole training. We build the instruments, and we look for the laws of how intelligence forms.
+> **Machine Exploration is building the infrastructure for a science of intelligence.**
+
+We want to understand how intelligence emerges inside deep learning systems: how representations and mechanisms form during training, how they change, and how they give rise to behavior.
+
+Our focus is **white-box experimentation at scale**: making it possible to observe, measure, and intervene on the internal computation of models across training and deployment.
+
+The long-term goal is to turn interpretability from a collection of techniques into an empirical science of learned intelligence. If we can understand these systems from the inside, we should also be able to build much stronger methods for monitoring and controlling them as they become more capable.
 
 Everything here is open: code, formats, runs and results. **Status: pre-alpha.** The plan is in [ROADMAP.md](ROADMAP.md).
 
@@ -18,20 +23,20 @@ Two fields attack this from opposite ends:
 
 Interpretability mostly studies one finished model, so it sees the result of learning, not the process. The theory of training mostly tracks scalars (loss, norms, curvature), so it sees the process without knowing what is being learned. We work at the join: measure what a model computes, at every point of its training, and explain how it got there.
 
-## The long-term goal
+## What an empirical science would give
 
 > **Predict what a model will learn, and when, before we train it.**
 
-Today we train a model and then find out what it learned. A science of intelligence would reverse that: from the data, the architecture, the optimiser and the scale, predict which capabilities and which behaviours will form, including the ones we do not want.
+Today we train a model and then find out what it learned. An empirical science of learned intelligence would reverse that: from the data, the architecture, the optimiser and the scale, predict which capabilities and which behaviours will form, including the ones we do not want. The same understanding gives monitors that read the model's internal computation, not only its outputs, and interventions that act on it.
 
-## Two clocks
+## Training and deployment: two clocks
 
-A model changes along two clocks, and we measure both with the same tools.
+A model changes along two clocks, and we observe, measure and intervene on both with the same tools.
 
 | Clock | What changes | Example question |
 |---|---|---|
 | **Training time** | Weights change from checkpoint to checkpoint. The model learns features, circuits and skills. | When does a capability form, and how suddenly? |
-| **Interaction time** | An agent acts over many turns, sometimes with other agents. What is active inside it changes turn by turn. | What does an agent hold internally before it acts? |
+| **Interaction time** (deployment) | An agent acts over many turns, sometimes with other agents. What is active inside it changes turn by turn. | What does an agent hold internally before it acts? |
 
 ## Three phases
 
