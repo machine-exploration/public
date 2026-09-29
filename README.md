@@ -112,7 +112,7 @@ We describe what a model computes and makes available in functional terms only. 
 
 | Repository | What it holds |
 |---|---|
-| [explorers](https://github.com/machine-exploration/explorers) | The open-source library, one workspace: `explorers.core` (examples, model states, observables, the engine, the content-addressed store, analyses, the Jacobian lens), `explorers.learning` (Pythia checkpoints, toy tasks, probes) and `explorers.populations` (scenario format, multi-agent runtime, episodes, labels, detectors). |
+| [explorers](https://github.com/machine-exploration/explorers) | The open-source library, one package with six concepts: models with named streams, traces (read and write in one forward pass), ops (interventions as data), measures (losses, weight statistics, the Jacobian lens), studies (the unit of work, cached by content). The agent side (scenarios, a multi-agent runtime) is frozen behind an extra. The design fits on [one page](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md). |
 | [mechanics](https://github.com/machine-exploration/mechanics) | The research program. First result: on a toy with tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), and each suddenly. |
 | [public](https://github.com/machine-exploration/public) | This page, the roadmap, and later research notes and results. |
 | [verifiers](https://github.com/machine-exploration/verifiers), [vllm](https://github.com/machine-exploration/vllm) | Pinned forks of upstream projects used as backends. No local changes. |

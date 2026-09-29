@@ -38,6 +38,10 @@ The criterion is not the number of methods. It is: can researchers express probe
 
 - **Result (E1, E2):** `ex.open`, `model.trace`, streams `residual` / `attn_out` / `mlp_out` on GPT-NeoX, Llama and GPT-2 layouts; `Study` with reads, writes, measures and patching (exact and attribution) over models or the checkpoints of a run. The five examples are checked against results that are exact by construction on any weights ([design](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md)). The library is one package, `explorers`.
 
+### Lean pass · done
+
+- **Result:** Six concepts (Model, Stream, Trace, Op, Measure, Study), one entry point (`Study`), one execution path (every measure is served by the same traced forward pass, with the study's writes applied). Legacy loaders, sweeps and duplicate code removed; library code outside the frozen agent side went from 2,253 to 1,775 lines, with the quanta toy and the Q1 dry run giving the same numbers as before. The design fits on [one page](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md).
+
 ### E3 — A second backend · next
 
 - **Deliverable:** The same studies on a second backend (NNsight or TransformerLens).
@@ -45,7 +49,7 @@ The criterion is not the number of methods. It is: can researchers express probe
 
 ### I1 — The Jacobian lens · done
 
-- **Result:** Engine reads for gradients and the pre-norm final residual; observables `jacobian`, `jlens_error` and the `logit_lens_error` baseline. On a random 3-layer GPT-NeoX, `J` matches the [reference implementation](https://github.com/anthropics/jacobian-lens) within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/jlens.md)). In `explorers.core` today; moves to `explorers.lenses` with E2.
+- **Result:** Engine reads for gradients and the pre-norm final residual; observables `jacobian`, `jlens_error` and the `logit_lens_error` baseline. On a random 3-layer GPT-NeoX, `J` matches the [reference implementation](https://github.com/anthropics/jacobian-lens) within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/jlens.md)). The lens measures are `measures.jacobian`, `measures.jlens_error` and `measures.logit_lens_error`.
 
 ## Phase 2 — The scaling proof
 
@@ -100,8 +104,9 @@ Uses the instrumentation to ask how training creates computation. Not static cir
 
 ### Deployment questions · planned
 
+- *The agent side (`explorers.populations`) is frozen until the science questions above have first results; P0 to Q3 are paused.*
 - **P0 — Do small models exploit tasks?** Models of 0.6B to 4B on impossible tasks, alone and with a shared channel; 200 episodes per model; 50 labels checked by hand.
-- **P1 — Detectors at a matched false-positive rate** · next: detection rate at 1 %, 5 % and 10 % false-positive rate with intervals from a bootstrap over episodes, and a token range for each turn. A first version ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) was closed without merge; redo it in `explorers.populations`.
+- **P1 — Detectors at a matched false-positive rate** · paused: detection rate at 1 %, 5 % and 10 % false-positive rate with intervals from a bootstrap over episodes, and a token range for each turn. A first version ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) was closed without merge; redo it in `explorers.populations`.
 - **Q2 — What does an agent hold, turn by turn?** Does the plan to exploit a task appear in the verbalizable space before the action?
 - **Q3 — Disposed to say, compared with said:** is the gap a signal for exploits and deception, against a chain-of-thought monitor and an LLM judge at the same false-positive rate?
 
