@@ -83,14 +83,20 @@ Uses the instrumentation to ask how training creates computation. Not static cir
 - **Done:** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), and each is learned suddenly (median sharpness 0.74).
 - **Next:** The same analysis on Pythia checkpoints, 70m to 1.4b: the timeline of skills the other questions are compared with.
 
-### Q1 — When does the verbalizable space form? · ready to run *(first flagship)*
+### Q1 — When does the workspace form? · ready to run *(first flagship)*
 
-- **Status:** the experiment runs through `ex.Study` with a result cache, and its dry run passes ([mechanics/experiments/q1_verbalizable_space](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Next: Pythia 70m on one GPU.
+- **Status:** the experiment runs through `ex.Study` with a result cache, and its dry run passes ([mechanics/experiments/q1_verbalizable_space](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Next: Pythia 70m, then 410m, on one GPU.
 
-- **Question:** Across training, when does the space read by the Jacobian lens appear, how suddenly, at which layers, and does it form before, with or after the skills of Q0?
-- **Deliverable:** The lens fitted at about 24 log-spaced Pythia checkpoints (70m to 410m, one 12 GB GPU). At each checkpoint and layer: `jlens_error` against the `logit_lens_error` baseline, and readouts of concepts implied but absent from the prompt. Onsets and sharpness next to the Q0 timeline.
-- **First check:** Does the finished-model result hold on the final Pythia checkpoints?
+- **Question:** Finished models hold a small set of verbalizable representations that behaves like a global workspace ([Gurnee et al., 2026](https://transformer-circuits.pub/2026/workspace/index.html)). The paper leaves open how early in pretraining it emerges, whether gradually or abruptly, and how it depends on model size. Q1 asks exactly that: at which checkpoint, at which layers, how suddenly, and before, with or after the skills of Q0?
+- **Deliverable:** The lens fitted at about 24 log-spaced Pythia checkpoints (70m to 410m, one 12 GB GPU). At each checkpoint and layer, the paper's four workspace signatures (dimension of the lens vectors, readout kurtosis, persistence across positions, CKA between layers), with the logit lens as a baseline; disagreement with the next token for the late "motor" layers. Onsets and sharpness next to the Q0 timeline.
+- **First check:** Do the final Pythia checkpoints show the paper's layer structure (early, workspace, motor)?
 - **Done when:** A result note in this repository, with the run that reproduces it. Positive or negative.
+
+### Q1b — How does post-training change the workspace? · planned
+
+- **Question:** The paper finds that post-training gives the workspace the Assistant's point of view, and that a misaligned disposition appears in it after fine-tuning, before any RL. When do these changes appear during SFT, preference tuning and RL, and how suddenly?
+- **Needs:** Q1's measures, and an open model family that publishes checkpoints through its post-training stages (to be checked: OLMo).
+- **Why here:** It is the bridge to phase 5: the same measurement, running alongside an RL run.
 
 ### M1 — From represented to used · planned
 
