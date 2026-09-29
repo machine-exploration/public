@@ -8,103 +8,140 @@ Our focus is **white-box experimentation at scale**: making it possible to obser
 
 The long-term goal is to turn interpretability from a collection of techniques into an empirical science of learned intelligence. If we can understand these systems from the inside, we should also be able to build much stronger methods for monitoring and controlling them as they become more capable.
 
-Everything here is open: code, formats, runs and results. **Status: pre-alpha.** The plan is in [ROADMAP.md](ROADMAP.md).
+The interface, the formats, the runs and the results are open. **Status: pre-alpha.** The plan is in [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## Why
+## The thesis
 
-Deep learning works far better than we can explain. We can train a model that writes code or plans across many steps, but we cannot say which computation it performs, when in training that computation appeared, or why training found it rather than another one.
+> **A neural network is a learned computation over internal streams of state.**
+> Machine Exploration builds the instrumentation to read, write and trace those streams.
 
-Two fields attack this from opposite ends:
+## One company, three programs
 
-- **Mechanistic interpretability** reads a trained model: its features, its circuits, the algorithms its weights implement. It asks *what* the model computes.
-- **Learning mechanics** treats training as a dynamical system. It asks *how* and *why* a computation forms ([Simon et al., 2026](https://arxiv.org/abs/2604.21691)).
+| Program | What it is | Its role |
+|---|---|---|
+| **[Explorers](https://github.com/machine-exploration/explorers)** | The open-source scientific interface: read, write and trace the streams inside a model | Sets the standard for how white-box experiments are written |
+| **Machine Exploration Runtime** | The infrastructure that executes experiments at scale: a query engine for neural computation | Makes experiments with millions of reads and interventions practical |
+| **[Mechanics](https://github.com/machine-exploration/mechanics)** | The research program: how training creates representations, algorithms and circuits | Gives the direction, and the science that tests the tools |
 
-Interpretability mostly studies one finished model, so it sees the result of learning, not the process. The theory of training mostly tracks scalars (loss, norms, curvature), so it sees the process without knowing what is being learned. We work at the join: measure what a model computes, at every point of its training, and explain how it got there.
+The three feed each other. Research finds a useful measurement; it becomes an Explorers method; researchers run it; large runs need the Runtime; the Runtime makes much richer data; that data feeds Mechanics.
 
-## What an empirical science would give
+```
+   Mechanics ──── new methods ───▶ Explorers ──── studies ───▶ Runtime
+       ▲                                                          │
+       └──────────────── larger, richer experiments ──────────────┘
+```
 
-> **Predict what a model will learn, and when, before we train it.**
+## Explorers: the interface
 
-Today we train a model and then find out what it learned. An empirical science of learned intelligence would reverse that: from the data, the architecture, the optimiser and the scale, predict which capabilities and which behaviours will form, including the ones we do not want. The same understanding gives monitors that read the model's internal computation, not only its outputs, and interventions that act on it.
+Explorers is not another collection of interpretability algorithms. It sets the vocabulary and the execution model:
 
-## Training and deployment: two clocks
+```
+Model  →  Execution  →  Stream  →  Trace
+                         read(stream, location)
+                         write(stream, location)
+```
 
-A model changes along two clocks, and we observe, measure and intervene on both with the same tools.
+A researcher writes what they want to read or change, and does not care where it runs: plain PyTorch, TransformerLens, NNsight, vLLM, a training loop, or a remote cluster. Existing tools can be backends. Methods are packages built on the same substrate: probes, lenses, patching, attribution, sparse autoencoders, circuits.
+
+The unit of work is a **study**: reads, interventions and measurements over models, checkpoints and examples.
+
+```python
+# Planned API (pre-alpha, will change)
+study = ex.Study(models=[model], checkpoints=checkpoints, examples=data)
+study.read(stream="residual", layers="*")
+study.measure(probe)
+results = study.compute()                                 # locally, on one GPU
+
+study.patch(source=clean, target=corrupt, sites=residual.everywhere())
+study.measure(logit_diff)
+results = study.compute(backend="machine-exploration")    # the same program, at scale
+```
+
+The test of the abstraction: a researcher changes the backend and does not rewrite the experiment, and gets the same result.
+
+What exists today is the start of this: examples identified by their content, model states along training, measurements that declare what they read, an engine that serves every measurement on a checkpoint from one forward pass, a store keyed by content, and a first lens (the Jacobian lens, checked against its reference implementation).
+
+## The Runtime: a query engine for neural computation
+
+Serious white-box experiments are expensive. 10,000 examples × 32 layers × 128 intervention sites × 20 checkpoints × 3 seeds is millions of model computations, and causal methods multiply them with counterfactual runs.
+
+The Runtime takes a whole study and builds an execution plan for it, the way a database plans a query:
+
+- one forward pass for every read a checkpoint needs;
+- source activations computed once and reused across counterfactual runs;
+- shared computation up to an intervention point, then branching;
+- batching of counterfactual branches, activation caching, deduplication, recomputation when cheaper than storage;
+- checkpoint loading, parallelism across examples, sites and devices, scheduling, and result storage.
+
+```
+                     ┌── write A → continuation
+prefix computation ──┼── write B → continuation
+                     └── write C → continuation
+```
+
+NNsight executes an intervention. The Runtime executes a study. Our claims about speed will be measured against existing tools on the same study, and published.
+
+## Mechanics: how training creates computation
+
+Explorers gives a trace of one checkpoint. Mechanics compares traces across checkpoints, and looks for the laws.
+
+- **Representation formation:** when does information become present in a stream, and how suddenly?
+- **Causal formation:** when does *representing* something turn into *using* it? A probe can find a feature long before an intervention on it changes behaviour.
+- **Circuit formation:** how does a learned algorithm assemble itself, step by step?
+- **Competition and replacement:** one mechanism solves a task, and training later replaces it with another while the loss barely moves.
+- **The verbalizable space** *(first flagship)*: finished language models hold a shared space of content they are disposed to say, read by the Jacobian lens ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form during training?
+
+The long-term goal: **predict what a model will learn, and when, before we train it**, and read and act on the computation behind a behaviour, not only its outputs.
+
+## Training and deployment
+
+The same instrumentation applies on two clocks.
 
 | Clock | What changes | Example question |
 |---|---|---|
-| **Training time** | Weights change from checkpoint to checkpoint. The model learns features, circuits and skills. | When does a capability form, and how suddenly? |
-| **Interaction time** (deployment) | An agent acts over many turns, sometimes with other agents. What is active inside it changes turn by turn. | What does an agent hold internally before it acts? |
+| **Training time** | Weights change from checkpoint to checkpoint | When does a capability form, and how suddenly? |
+| **Deployment** | An agent acts over many turns, sometimes with other agents | What does an agent hold internally before it acts? Does it differ from what it says? |
 
-## Three phases
+Later, the same studies run continuously alongside training: white-box measurements next to the loss, the reward and the evals.
 
-1. **The instrument.** [`explorers`](https://github.com/machine-exploration/explorers): an open library to measure what happens inside models over time, on both clocks. Anyone can add a measurement in a few lines.
-2. **The survey.** Families of models trained with a full record: dense checkpoints, the data order, many seeds and sizes, controlled changes to the data, and agents trained with RL. Published as an open dataset of internals over training. Public checkpoint suites such as [Pythia](https://arxiv.org/abs/2304.01373) and [OLMo](https://arxiv.org/abs/2402.00838) are a start, but they were not designed for this.
-3. **The laws.** From the survey: regularities that predict when a feature, a capability or a behaviour forms. Learning mechanics gives the hypotheses; the survey tests them.
-
-## First questions
-
-**1. When does the verbalizable space form during training?** *(flagship)*
-Recent work finds that language models hold, in their middle layers, a shared space of content that the model is disposed to say, and reads it with the Jacobian lens (J-lens) ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/); [code](https://github.com/anthropics/jacobian-lens)). That work studies finished models. We ask how this space develops: when it appears across training, how suddenly, at which layers, and whether it forms before, with or after the skills the model learns.
-
-**2. What does an agent hold in that space, turn by turn?**
-For example: does a plan to exploit a task appear inside the model before the action? Does content move from one agent to another through a shared channel?
-
-**3. Does what a model is disposed to say differ from what it says?**
-A gap between the two is a candidate internal signal for deception. It matters for oversight: transcripts can be spoofed, so oversight has to read the models, not only what they write ([METR](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/), [Redwood Research](https://www.redwoodresearch.org/research/hugging-face-incident)).
-
-We describe these spaces only in functional terms (what is available for report, shared across layers and positions, limited in size). We make no claims about experience.
-
-## The instrument
-
-Every result in `explorers` has the same form: **an observable, measured on a run of model states, on a set of examples**, stored by content.
-
-| Primitive | What it is |
-|---|---|
-| `Examples` | What we look at: texts, tasks, agent turns. Identified by their content. |
-| `State` / `Trajectory` | A model at one point (a checkpoint, a LoRA adapter, a model in memory), and a run of them. |
-| `Observable` | A pure, versioned measurement that declares what it reads (weights, losses, activations, gradients). |
-| `over` / `across` | Measure along one run, or across sizes and seeds, with one forward pass per state. |
-| `Store` | Results keyed by content, so reruns cost nothing and results from many machines merge. |
-| `analysis` | Functions of stored curves only: when a curve changes (`onsets`), how suddenly, what correlates with it. |
-
-Because every result has this form, results can be compared, replayed and combined. Published stores of many recorded runs become the survey.
+We describe what a model computes and makes available in functional terms only. We make no claims about experience.
 
 ## What exists today
 
 | Repository | What it holds |
 |---|---|
-| [explorers](https://github.com/machine-exploration/explorers) | The agent side: scenario format, multi-agent runtime, episodes, labels, detectors. The home of the unified library. |
-| [mechanics](https://github.com/machine-exploration/mechanics) | The shared core (`explorers-core`) and the training side (`explorers-learning`: Pythia checkpoints, toy tasks, probes). First result: on a toy with tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), and each is learned suddenly. Moves into `explorers`. |
+| [explorers](https://github.com/machine-exploration/explorers) | Today: the agent side (scenario format, multi-agent runtime, episodes, labels, detectors). The home of the unified library. |
+| [mechanics](https://github.com/machine-exploration/mechanics) | Today: the library core (`explorers-core`), the training side (`explorers-learning`: Pythia checkpoints, toy tasks, probes, the Jacobian lens) and the first result (on a toy with tasks of Zipf frequencies, frequent tasks are learned first, rank correlation −0.74, and suddenly). The library code moves to `explorers`; `mechanics` becomes the research program: experiments, datasets, papers. |
 | [public](https://github.com/machine-exploration/public) | This page, the roadmap, and later research notes and results. |
 | [verifiers](https://github.com/machine-exploration/verifiers), [vllm](https://github.com/machine-exploration/vllm) | Pinned forks of upstream projects used as backends. No local changes. |
 
 ## Principles
 
-- **Open by default:** code, formats, runs and results. Negative results are published too.
+- **Open by default:** the interface, the formats, the runs and the results. Negative results are published too.
 - **Reproducible:** every result replays from its config, seed, data order, model version and code version.
-- **Causal, not only correlational:** a claim that a feature exists is tested by intervention (steering, ablation, patching), not only by a readout that correlates.
-- **Ground truth first:** a method is validated where the answer is known (toy tasks, labelled behaviours) before it is used where it is not.
-- **Against baselines:** a new signal is compared with the simple ones (loss, weight norm, a text monitor) at the same budget.
+- **Same study, same result:** a study gives the same result on every backend, within a stated tolerance, or the backend is not supported.
+- **Measured claims:** speed-ups are measured against existing tools on the same study, and published.
+- **Causal, not only correlational:** a claim that a feature exists is tested by intervention, not only by a readout that correlates.
+- **Ground truth first:** a method is validated where the answer is known before it is used where it is not.
 - **Small before large:** a question is settled on a model that fits one GPU before it is asked of a large one.
-- **Functional terms only:** we describe what a model computes and makes available, not what it experiences.
-- **Contained:** scenarios that push agents to exploit tasks run with no network, no shared cache and no path between episodes. Such scenarios and their traces are published only after publication rules are settled.
+- **Contained:** scenarios that push agents to exploit tasks run with no network, no shared cache and no path between episodes, and are published only after publication rules are settled.
 
 ## Contributing
 
-The most useful contributions right now are conversations. If you work on interpretability, learning mechanics, or the training of agents, and want a shared, reproducible instrument, open an issue in the repository that fits.
+The most useful contributions right now are conversations. If you run white-box experiments, build interpretability tools, or study how training shapes models, open an issue in the repository that fits.
 
 ## References
 
 - Simon et al., *There Will Be a Scientific Theory of Deep Learning*, [arXiv:2604.21691](https://arxiv.org/abs/2604.21691), and the [open directions](https://learningmechanics.pub/openquestions/)
 - Anthropic, *Verbalizable Representations Form a Global Workspace in Language Models* (2026), [transformer-circuits.pub](https://transformer-circuits.pub/2026/workspace/), [code](https://github.com/anthropics/jacobian-lens)
+- Fiotto-Kaufman et al., *NNsight and NDIF*, [arXiv:2407.14561](https://arxiv.org/abs/2407.14561)
+- [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens)
 - Michaud et al., *The Quantization Model of Neural Scaling*, [arXiv:2303.13506](https://arxiv.org/abs/2303.13506)
 - Nanda et al., *Progress Measures for Grokking via Mechanistic Interpretability*, [arXiv:2301.05217](https://arxiv.org/abs/2301.05217)
 - Olsson et al., *In-context Learning and Induction Heads*, [arXiv:2209.11895](https://arxiv.org/abs/2209.11895)
 - Hoogland et al., *The Developmental Landscape of In-Context Learning*, [arXiv:2402.02364](https://arxiv.org/abs/2402.02364)
 - Biderman et al., *Pythia*, [arXiv:2304.01373](https://arxiv.org/abs/2304.01373)
-- Groeneveld et al., *OLMo*, [arXiv:2402.00838](https://arxiv.org/abs/2402.00838)
 - Goodfire, *Monitoring and Discovering Reward Hacking with Internal Representations during LLM Evaluations*, [arXiv:2609.19101](https://arxiv.org/abs/2609.19101)
 - METR and Redwood Research, investigation of the OpenAI / Hugging Face hacking incident (2026): [METR](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/) · [Redwood Research](https://www.redwoodresearch.org/research/hugging-face-incident)
