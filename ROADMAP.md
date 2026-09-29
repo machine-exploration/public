@@ -18,7 +18,7 @@ The criterion is not the number of methods. It is: can researchers express probe
 
 - **Result:** The `explorers` repository is one `uv` workspace with `explorers.core`, `explorers.learning` and `explorers.populations`, and the history of both former repositories. The three packages install and import together (before, the prototype's `explorers/__init__.py` hid `explorers.core`). 76 tests pass from a fresh clone. `mechanics` holds research only and installs `explorers` from GitHub; its toy quanta run reproduces the result.
 
-### E1 — Streams: read, write, trace · next
+### E1 — Streams: read, write, trace · done
 
 - **Deliverable:** Named streams (`residual`, `attn_out`, `mlp_out`) with locations (layer, position), on Hugging Face / PyTorch models:
 
@@ -31,12 +31,14 @@ The criterion is not the number of methods. It is: can researchers express probe
   ```
 - **Done when:** Reads equal what hand-written hooks return; a write changes exactly the targeted location; a stable name for a site holds across checkpoints of one model.
 
-### E2 — The study · next
+### E2 — The study · done
 
 - **Deliverable:** `Study`: reads, writes (steering, ablation, patching) and measurements over models × checkpoints × examples, compiled to the existing engine (one forward pass per state, results stored by content).
 - **Done when:** Five canonical examples run as studies, each checked against a known result: a linear probe, steering along a direction, activation patching, attribution patching, and a sparse autoencoder read.
 
-### E3 — A second backend · planned
+- **Result (E1, E2):** `ex.open`, `model.trace`, streams `residual` / `attn_out` / `mlp_out` on GPT-NeoX, Llama and GPT-2 layouts; `Study` with reads, writes, measures and patching (exact and attribution) over models or the checkpoints of a run. The five examples are checked against results that are exact by construction on any weights ([design](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md)). The library is one package, `explorers`.
+
+### E3 — A second backend · next
 
 - **Deliverable:** The same studies on a second backend (NNsight or TransformerLens).
 - **Done when:** Every E2 example gives the same result on both backends within a stated tolerance. Differences that cannot be closed are documented, and that backend does not support those operations.
