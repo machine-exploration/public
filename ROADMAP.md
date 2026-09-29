@@ -1,9 +1,10 @@
 # Roadmap
 
-The work runs as two programs on one core, then joins them. Each step has a question, a deliverable, and a condition that says when it is done. There are no dates.
+Each step has a question, a deliverable, and a condition that says when it is done. There are no dates.
 
-- **Populations** (interaction time) has priority for the GPU and for attention.
-- **Learning** (training time) uses public checkpoints and small toy runs, so it costs little. It also builds the tools the join needs: runs of checkpoints, observables across them, and assumption audits on features with a known answer.
+- **First: training observability for RL post-training.** See what a model learns while it trains, and get a warning when a bad behaviour (such as reward hacking) starts to form inside the model, before the evals show it. This line has priority for the GPU and for attention.
+- **Populations** (interaction time) gives the labelled behaviours to watch for, and the monitors at inference.
+- **Learning** (training time) uses public checkpoints and toy runs. It validates the measurements where the answer is known.
 
 Status: **done**, **in review**, **next**, **planned**.
 
@@ -17,6 +18,36 @@ Status: **done**, **in review**, **next**, **planned**.
   - one set of detection metrics (today in two places: `explorers-core` metrics and the populations detector harness).
 - **Before:** Land the detector harness ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) so it moves with the rest.
 - **Done when:** One `uv sync` installs everything, all tests pass, a core observable (for example `hidden_norm`) runs on agent episodes, and `mechanics` points to `explorers`.
+
+## Training observability — the first product line
+
+Like a training API that hides distributed training behind a few calls, `explorers` hides the hard part of reading internals across a run behind four primitives:
+
+| Primitive | What it does | Status |
+|---|---|---|
+| `Examples` | What to look at: prompts and labelled behaviours | exists |
+| `State` | One checkpoint, from anywhere: a Hugging Face revision, a model in memory, a LoRA adapter from a hosted training run | exists; hosted runs to add |
+| `Observable` | What to measure: a probe, a loss, the size and rank of weight updates | exists |
+| `watch` | Measure each new checkpoint of a run in a separate process, store the curves, and raise alerts (formation, drift) | new, built on `over` and `onsets` |
+
+### T1 — Read any run · next
+
+- **Deliverable:** `State` from LoRA checkpoints of a hosted RL run ([Tinker](https://tinker-docs.thinkingmachines.ai/tutorials/core-concepts/weights/) first: download each checkpoint as an adapter, load base + adapter). A run of adapters is a `Trajectory`.
+- **Why adapters:** they are small, so a checkpoint every few steps is cheap to store. The run trains on the hosted service; the internals are read on a local GPU.
+- **Done when:** A core observable runs over the checkpoints of a real hosted run.
+
+### T2 — `watch` · next
+
+- **Deliverable:** A process that follows a run, measures each new checkpoint with the declared observables, stores the results by content, and computes onsets (when a curve changes, and how suddenly) and drift (a probe's accuracy drops).
+- **Rule:** It runs outside the trainer's process and writes to a store the reward code cannot read (audit isolation).
+- **Done when:** On a toy run with a known answer (the quanta toy), `watch` reports the same onsets as the offline analysis.
+
+### T3 — The proof: internals before evals · planned
+
+- **Question:** During RL on hackable tasks, does a probe for the hack feature move before the eval hack rate goes up?
+- **Deliverable:** An RL run on impossible tasks (any passing solution is a hack) with a LoRA checkpoint every N steps. At each checkpoint: the eval hack rate on held-out tasks, a probe for the hack feature, the size and rank of the updates in the layers the probe reads, and the four assumption audits.
+- **Baseline:** The eval hack rate itself, measured as often as the checkpoints. The internal signal has value only if it comes earlier, or needs fewer labels.
+- **Done when:** The result is published, positive or negative, with the run that reproduces it. This is the demonstration of the product and the first paper.
 
 ## Populations — interaction time
 
@@ -70,12 +101,11 @@ Status: **done**, **in review**, **next**, **planned**.
 
 ## The join — both clocks
 
-### J1 — Monitors under training · planned
+### J1 — Monitors under training, on agent populations · planned
 
-- **Question:** How does a monitored feature form, drift and hide during training? Is obfuscation a change in which assumption holds?
-- **Deliverable:** The P3 monitors and audits run on agent episodes across a series of checkpoints. Two routes: open models with published post-training checkpoints that can play the scenario, if they exist; otherwise our own RL run on hackable tasks. A second run trains against the probe (obfuscation).
+- **Question:** T3 on multi-agent scenarios: how does a monitored feature form, drift and hide during training? Is obfuscation a change in which assumption holds?
+- **Deliverable:** The P3 monitors and audits run on agent episodes across a series of checkpoints. The training uses the hosted route from T1. A second run trains against the probe (obfuscation).
 - **Done when:** Formation, drift and obfuscation each have a result against the label baseline.
-- **Needs:** For our own RL run, two GPUs or a hosted trainer.
 
 ### J2 — Transfer · planned
 
@@ -93,5 +123,6 @@ Status: **done**, **in review**, **next**, **planned**.
 - The coordination label is a heuristic until a judge replaces it (P3).
 - Reading activations for long agent contexts on one GPU may need the sidecar and streaming (P2).
 - Hugging Face must be reachable from the machine that runs L1 and L2.
-- Dense checkpoints are large. Keep only the layers that are read, or low-rank deltas, and full checkpoints at log-spaced steps.
-- Our own RL run (J1) does not fit on one consumer GPU.
+- Full checkpoints are large. LoRA adapters from hosted runs solve this for T1–T3; for full fine-tunes, keep only the layers that are read, and full checkpoints at log-spaced steps.
+- Reading base + adapter for a 4B model on a 12 GB GPU is tight; start with smaller models.
+- T3 depends on RL producing hacking on the chosen tasks and model.

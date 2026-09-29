@@ -9,6 +9,7 @@ Everything here is open: code, formats, runs and results. **Status: pre-alpha.**
 ## Mission
 
 - **Long term: a science of deep learning.** How training builds the mechanisms a model computes with, studied at the join of learning mechanics and mechanistic interpretability ([Simon et al., 2026](https://arxiv.org/abs/2604.21691)).
+- **First product: training observability for RL post-training.** See what a model learns while it trains, and get a warning when a bad behaviour starts to form inside it, before the evals show it.
 - **Now: white-box oversight of agent populations.** Agents run in populations that share tools, caches and channels, and they fail together ([METR](https://metr.org/blog/2026-08-26-openai-hugging-face-incident-investigation/), [Redwood Research](https://www.redwoodresearch.org/research/hugging-face-incident)). Transcripts can be spoofed, so oversight has to read the models, not only what they write.
 
 ## One idea: two clocks
@@ -55,6 +56,7 @@ One hypothesis joins it all: **obfuscation is a change in which assumption holds
 
 | Program | Clock | First question | Where it stands |
 |---|---|---|---|
+| **Training observability** | training | During RL, does a probe for a bad behaviour move before the eval rate does? | First product line. Core primitives exist; reading hosted LoRA checkpoints and `watch` are next. |
 | **Populations** | interaction | Does anything inside agents signal hacking and coordination before it shows in behaviour, better than text monitors at the same false-positive rate? | Scenario format, runtime and labels exist. A detector harness at matched false-positive rate is in review. |
 | **Learning** | training | When, and in what order, does a model learn what it learns? First study: quanta. | Core primitives and a toy result exist: frequent tasks are learned first (rank correlation −0.74), and suddenly. Pythia is next. |
 | **The join** | both | Monitors under training: formation, drift, obfuscation, transfer. | Planned. Needs both programs on one core. |
