@@ -79,7 +79,9 @@ Uses the instrumentation to ask how training creates computation. Not static cir
 - **Done:** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), and each is learned suddenly (median sharpness 0.74).
 - **Next:** The same analysis on Pythia checkpoints, 70m to 1.4b: the timeline of skills the other questions are compared with.
 
-### Q1 — When does the verbalizable space form? · next *(first flagship)*
+### Q1 — When does the verbalizable space form? · ready to run *(first flagship)*
+
+- **Status:** the experiment runs through `ex.Study` with a result cache, and its dry run passes ([mechanics/experiments/q1_verbalizable_space](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Next: Pythia 70m on one GPU.
 
 - **Question:** Across training, when does the space read by the Jacobian lens appear, how suddenly, at which layers, and does it form before, with or after the skills of Q0?
 - **Deliverable:** The lens fitted at about 24 log-spaced Pythia checkpoints (70m to 410m, one 12 GB GPU). At each checkpoint and layer: `jlens_error` against the `logit_lens_error` baseline, and readouts of concepts implied but absent from the prompt. Onsets and sharpness next to the Q0 timeline.
