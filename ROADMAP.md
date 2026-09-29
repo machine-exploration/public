@@ -43,7 +43,7 @@ The criterion is not the number of methods. It is: can researchers express probe
 
 ### I1 — The Jacobian lens · done
 
-- **Result:** Engine reads for gradients and the pre-norm final residual; observables `jacobian`, `jlens_error` and the `logit_lens_error` baseline. On a random 3-layer GPT-NeoX, `J` matches the [reference implementation](https://github.com/anthropics/jacobian-lens) within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs ([docs](https://github.com/machine-exploration/mechanics/blob/main/docs/jlens.md)). Becomes `explorers.lenses` in step 0.
+- **Result:** Engine reads for gradients and the pre-norm final residual; observables `jacobian`, `jlens_error` and the `logit_lens_error` baseline. On a random 3-layer GPT-NeoX, `J` matches the [reference implementation](https://github.com/anthropics/jacobian-lens) within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/jlens.md)). In `explorers.core` today; moves to `explorers.lenses` with E2.
 
 ## Phase 2 — The scaling proof
 
