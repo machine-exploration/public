@@ -8,7 +8,7 @@ Our focus is **white-box experimentation at scale**: making it possible to obser
 
 The long-term goal is to turn interpretability from a collection of techniques into an empirical science of learned intelligence. If we can understand these systems from the inside, we should also be able to build much stronger methods for monitoring and controlling them as they become more capable.
 
-The interface, the formats, the runs and the results are open. **Status: pre-alpha.** The plan is in [ROADMAP.md](ROADMAP.md).
+The interface, the Runtime, the formats, the runs and the results are open source. **Status: pre-alpha.** The plan is in [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -22,7 +22,7 @@ The interface, the formats, the runs and the results are open. **Status: pre-alp
 | Program | What it is | Its role |
 |---|---|---|
 | **[Explorers](https://github.com/machine-exploration/explorers)** | The open-source scientific interface: read, write and trace the streams inside a model | Sets the standard for how white-box experiments are written |
-| **Machine Exploration Runtime** | The infrastructure that executes experiments at scale: a query engine for neural computation | Makes experiments with millions of reads and interventions practical |
+| **Machine Exploration Runtime** | The infrastructure that executes experiments at scale: a query engine for neural computation. Open source. | Makes experiments with millions of reads and interventions practical |
 | **[Mechanics](https://github.com/machine-exploration/mechanics)** | The research program: how training creates representations, algorithms and circuits | Gives the direction, and the science that tests the tools |
 
 The three feed each other. Research finds a useful measurement; it becomes an Explorers method; researchers run it; large runs need the Runtime; the Runtime makes much richer data; that data feeds Mechanics.
@@ -81,7 +81,7 @@ prefix computation ──┼── write B → continuation
                      └── write C → continuation
 ```
 
-NNsight executes an intervention. The Runtime executes a study. Our claims about speed will be measured against existing tools on the same study, and published.
+NNsight executes an intervention. The Runtime executes a study. It is open source, like the interface. Our claims about speed will be measured against existing tools on the same study, and published.
 
 ## Mechanics: how training creates computation
 
@@ -112,14 +112,14 @@ We describe what a model computes and makes available in functional terms only. 
 
 | Repository | What it holds |
 |---|---|
-| [explorers](https://github.com/machine-exploration/explorers) | Today: the agent side (scenario format, multi-agent runtime, episodes, labels, detectors). The home of the unified library. |
-| [mechanics](https://github.com/machine-exploration/mechanics) | Today: the library core (`explorers-core`), the training side (`explorers-learning`: Pythia checkpoints, toy tasks, probes, the Jacobian lens) and the first result (on a toy with tasks of Zipf frequencies, frequent tasks are learned first, rank correlation −0.74, and suddenly). The library code moves to `explorers`; `mechanics` becomes the research program: experiments, datasets, papers. |
+| [explorers](https://github.com/machine-exploration/explorers) | The open-source library, one workspace: `explorers.core` (examples, model states, observables, the engine, the content-addressed store, analyses, the Jacobian lens), `explorers.learning` (Pythia checkpoints, toy tasks, probes) and `explorers.populations` (scenario format, multi-agent runtime, episodes, labels, detectors). |
+| [mechanics](https://github.com/machine-exploration/mechanics) | The research program. First result: on a toy with tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), and each suddenly. |
 | [public](https://github.com/machine-exploration/public) | This page, the roadmap, and later research notes and results. |
 | [verifiers](https://github.com/machine-exploration/verifiers), [vllm](https://github.com/machine-exploration/vllm) | Pinned forks of upstream projects used as backends. No local changes. |
 
 ## Principles
 
-- **Open by default:** the interface, the formats, the runs and the results. Negative results are published too.
+- **Open by default:** the interface, the Runtime, the formats, the runs and the results. Negative results are published too.
 - **Reproducible:** every result replays from its config, seed, data order, model version and code version.
 - **Same study, same result:** a study gives the same result on every backend, within a stated tolerance, or the backend is not supported.
 - **Measured claims:** speed-ups are measured against existing tools on the same study, and published.

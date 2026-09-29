@@ -14,12 +14,9 @@ Status: **done**, **in review**, **next**, **planned**, **later**.
 
 The criterion is not the number of methods. It is: can researchers express probes, steering, patching, attribution and sparse autoencoders naturally, as compositions over the same execution model?
 
-### Step 0 — One library · next
+### Step 0 — One library · done
 
-- **Problem:** Two repositories claim the `explorers` namespace. The agent prototype in `explorers` is a regular package (`explorers/__init__.py`); installed next to the workspace in `mechanics`, it hides `explorers.core`, and `import explorers.core` fails.
-- **Deliverable:** The `explorers` repository holds all library code, with its history: `core` and `learning` from `mechanics`, and the agent side ported to `explorers.populations`. The `mechanics` repository becomes the research program (experiments, datasets, papers) and depends on `explorers`.
-- **Before:** Land the detector harness ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) so it moves with the rest.
-- **Done when:** One `uv sync` installs the library, all tests pass, and `mechanics` contains no library code.
+- **Result:** The `explorers` repository is one `uv` workspace with `explorers.core`, `explorers.learning` and `explorers.populations`, and the history of both former repositories. The three packages install and import together (before, the prototype's `explorers/__init__.py` hid `explorers.core`). 76 tests pass from a fresh clone. `mechanics` holds research only and installs `explorers` from GitHub; its toy quanta run reproduces the result.
 
 ### E1 — Streams: read, write, trace · next
 
@@ -65,6 +62,7 @@ The criterion is not the number of methods. It is: can researchers express probe
 
 ### R1 — `study.compute(backend="machine-exploration")` · later
 
+- **Open source,** like the interface.
 - **Deliverable:** The same Python study, executed on many GPUs: scheduling, parallelism across examples, sites, checkpoints and devices, results in a shared content store. Researchers do not manage clusters.
 - **Done when:** A study that takes days on one GPU runs in hours, and gives the same result as the local run.
 
@@ -97,7 +95,7 @@ Uses the instrumentation to ask how training creates computation. Not static cir
 ### Deployment questions · planned
 
 - **P0 — Do small models exploit tasks?** Models of 0.6B to 4B on impossible tasks, alone and with a shared channel; 200 episodes per model; 50 labels checked by hand.
-- **P1 — Detectors at a matched false-positive rate** · in review ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)).
+- **P1 — Detectors at a matched false-positive rate** · next: detection rate at 1 %, 5 % and 10 % false-positive rate with intervals from a bootstrap over episodes, and a token range for each turn. A first version ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) was closed without merge; redo it in `explorers.populations`.
 - **Q2 — What does an agent hold, turn by turn?** Does the plan to exploit a task appear in the verbalizable space before the action?
 - **Q3 — Disposed to say, compared with said:** is the gap a signal for exploits and deception, against a chain-of-thought monitor and an LLM judge at the same false-positive rate?
 
