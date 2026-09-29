@@ -14,8 +14,8 @@ The interface, the Runtime, the formats, the runs and the results are open sourc
 
 ## The thesis
 
-> **A neural network is a learned computation over internal streams of state.**
-> Machine Exploration builds the instrumentation to read, write and trace those streams.
+> **A neural network is a learned computation: its weights are the program, and its internal streams carry the running state.**
+> Machine Exploration builds the instrumentation to read, write and trace both.
 
 ## One company, three programs
 
