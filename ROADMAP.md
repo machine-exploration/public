@@ -51,6 +51,8 @@ The criterion is not the number of methods. It is: can researchers express probe
 
 ### S1 — The benchmark · planned
 
+- **Done before S1:** reads keep only their selection or a reduction computed on the device; interventions, reductions and metrics are data (`explorers.ops`); a study serializes to JSON and has a content key. So the benchmark measures patching itself, not avoidable copies.
+
 - **Question:** How expensive is exhaustive activation patching across training, with the tools researchers use today?
 - **Deliverable:** One study: every residual-stream patch (all layers × all positions) for a clean/corrupt task with a known mechanism, across checkpoints of an open model suite. First scale: Pythia 70m, 10 checkpoints, 1,000 example pairs. Baselines: a naive loop, NNsight sessions, TransformerLens, on the same hardware.
 - **Done when:** Wall time and GPU-hours of each baseline are published, with identical results.
