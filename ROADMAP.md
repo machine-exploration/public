@@ -13,13 +13,14 @@ Status: **done**, **in review**, **next**, **planned**, **later**.
 - **Before:** Land the detector harness ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) so it moves with the rest.
 - **Done when:** One `uv sync` installs everything, all tests pass, and `mechanics` points to `explorers`.
 
-### I1 — The J-lens as an observable · next
+### I1 — The J-lens as an observable · done
 
 - **Deliverable:**
   - A new read in the engine that gives observables access to gradients through the model.
   - Our own implementation of the Jacobian lens: `lens_l(h) = unembed(J_l · h)`, with `J_l` the average Jacobian from layer `l` to the last layer over a text corpus. We follow the published method and do not copy the reference code.
   - A fitted lens is part of the result, stored by content like any other.
 - **Done when:** On a small open model, our lens gives the same top readouts as the [reference implementation](https://github.com/anthropics/jacobian-lens) within a stated tolerance.
+- **Result:** In `mechanics` ([docs/jlens.md](https://github.com/machine-exploration/mechanics/blob/main/docs/jlens.md)). On a random 3-layer GPT-NeoX, our `J` matches the reference within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs.
 
 ### I2 — Agent turns as examples · planned
 
