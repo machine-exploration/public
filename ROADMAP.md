@@ -1,128 +1,96 @@
 # Roadmap
 
-Each step has a question, a deliverable, and a condition that says when it is done. There are no dates.
+The plan follows the three phases in the [README](README.md): the instrument, the survey, the laws. Each step has a question, a deliverable, and a condition that says when it is done. There are no dates.
 
-- **First: training observability for RL post-training.** See what a model learns while it trains, and get a warning when a bad behaviour (such as reward hacking) starts to form inside the model, before the evals show it. This line has priority for the GPU and for attention.
-- **Populations** (interaction time) gives the labelled behaviours to watch for, and the monitors at inference.
-- **Learning** (training time) uses public checkpoints and toy runs. It validates the measurements where the answer is known.
+Status: **done**, **in review**, **next**, **planned**, **later**.
 
-Status: **done**, **in review**, **next**, **planned**.
+## Phase 1 — The instrument
 
-## Step 0 — One library · next
+### Step 0 — One library · next
 
-- **Problem:** Two repositories claim the `explorers` namespace. The prototype in `explorers` is a regular package (`explorers/__init__.py`). Installed next to the workspace in `mechanics`, it hides `explorers.core`, and `import explorers.core` fails.
-- **Deliverable:** The `explorers` repository becomes the workspace, with its history kept:
-  - `packages/core`, `packages/learning`: moved from `mechanics`;
-  - `packages/populations`: the prototype, ported from `explorers.<module>` to `explorers.populations.<module>`;
-  - an adapter from episodes to core `Examples`, with one example per (agent, turn), so any core observable runs on agent episodes;
-  - one set of detection metrics (today in two places: `explorers-core` metrics and the populations detector harness).
+- **Problem:** Two repositories claim the `explorers` namespace. The agent prototype in `explorers` is a regular package (`explorers/__init__.py`). Installed next to the workspace in `mechanics`, it hides `explorers.core`, and `import explorers.core` fails.
+- **Deliverable:** The `explorers` repository becomes the workspace, with its history kept: `packages/core` and `packages/learning` from `mechanics`, and `packages/populations` for the agent side (ported from `explorers.<module>` to `explorers.populations.<module>`). One set of detection metrics instead of two.
 - **Before:** Land the detector harness ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) so it moves with the rest.
-- **Done when:** One `uv sync` installs everything, all tests pass, a core observable (for example `hidden_norm`) runs on agent episodes, and `mechanics` points to `explorers`.
+- **Done when:** One `uv sync` installs everything, all tests pass, and `mechanics` points to `explorers`.
 
-## Training observability — the first product line
+### I1 — The J-lens as an observable · next
 
-Like a training API that hides distributed training behind a few calls, `explorers` hides the hard part of reading internals across a run behind four primitives:
+- **Deliverable:**
+  - A new read in the engine that gives observables access to gradients through the model.
+  - Our own implementation of the Jacobian lens: `lens_l(h) = unembed(J_l · h)`, with `J_l` the average Jacobian from layer `l` to the last layer over a text corpus. We follow the published method and do not copy the reference code.
+  - A fitted lens is part of the result, stored by content like any other.
+- **Done when:** On a small open model, our lens gives the same top readouts as the [reference implementation](https://github.com/anthropics/jacobian-lens) within a stated tolerance.
 
-| Primitive | What it does | Status |
-|---|---|---|
-| `Examples` | What to look at: prompts and labelled behaviours | exists |
-| `State` | One checkpoint, from anywhere: a Hugging Face revision, a model in memory, a LoRA adapter from a hosted training run | exists; hosted runs to add |
-| `Observable` | What to measure: a probe, a loss, the size and rank of weight updates | exists |
-| `watch` | Measure each new checkpoint of a run in a separate process, store the curves, and raise alerts (formation, drift) | new, built on `over` and `onsets` |
+### I2 — Agent turns as examples · planned
 
-### T1 — Read any run · next
+- **Deliverable:** An adapter from agent episodes to `Examples`, with one example per agent turn and the token range of that turn. Any observable, including the J-lens, then runs on agent episodes without change.
+- **Done when:** A core observable runs on recorded episodes and reads only the tokens of each turn.
 
-- **Deliverable:** `State` from LoRA checkpoints of a hosted RL run ([Tinker](https://tinker-docs.thinkingmachines.ai/tutorials/core-concepts/weights/) first: download each checkpoint as an adapter, load base + adapter). A run of adapters is a `Trajectory`.
-- **Why adapters:** they are small, so a checkpoint every few steps is cheap to store. The run trains on the hosted service; the internals are read on a local GPU.
-- **Done when:** A core observable runs over the checkpoints of a real hosted run.
+### I3 — Any run as a series of states · planned
 
-### T2 — `watch` · next
+- **Deliverable:** `State` from LoRA adapters of hosted training runs (small, so dense checkpoints are cheap to store), as well as from Hugging Face revisions and models in memory. A `watch` process that measures each new checkpoint of a run, outside the trainer's process.
+- **Done when:** A core observable runs over the checkpoints of a real RL run.
 
-- **Deliverable:** A process that follows a run, measures each new checkpoint with the declared observables, stores the results by content, and computes onsets (when a curve changes, and how suddenly) and drift (a probe's accuracy drops).
-- **Rule:** It runs outside the trainer's process and writes to a store the reward code cannot read (audit isolation).
-- **Done when:** On a toy run with a known answer (the quanta toy), `watch` reports the same onsets as the offline analysis.
+### I4 — Scale and names · planned
 
-### T3 — The proof: internals before evals · planned
+- **Deliverable:** Streaming reducers, so long agent contexts and many layers fit in memory. A stable name for a site (layer, component, position) that holds across checkpoints and models.
 
-- **Question:** During RL on hackable tasks, does a probe for the hack feature move before the eval hack rate goes up?
-- **Deliverable:** An RL run on impossible tasks (any passing solution is a hack) with a LoRA checkpoint every N steps. At each checkpoint: the eval hack rate on held-out tasks, a probe for the hack feature, the size and rank of the updates in the layers the probe reads, and the four assumption audits.
-- **Baseline:** The eval hack rate itself, measured as often as the checkpoints. The internal signal has value only if it comes earlier, or needs fewer labels.
-- **Done when:** The result is published, positive or negative, with the run that reproduces it. This is the demonstration of the product and the first paper.
+## Phase 1 — First questions
 
-## Populations — interaction time
+### Q0 — Quanta across training · done on a toy, next on Pythia
 
-### P0 — Do small models hack and coordinate? · next
+- **Question:** When, and in what order, does a model learn what it learns ([Michaud et al.](https://arxiv.org/abs/2303.13506))?
+- **Done:** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), and each is learned suddenly (median sharpness 0.74).
+- **Next:** The same analysis on Pythia checkpoints, 70m to 1.4b. It gives the timeline of skills that Q1 is compared with.
 
-- **Question:** Do models that fit one GPU (0.6B to 4B) hack and coordinate in the first scenario (the Hugging Face incident in miniature)?
-- **Deliverable:** Hack rate, propagation rate and board activity for each model, with intervals, on 200 episodes per model. 50 labels checked by hand.
-- **Done when:** One model hacks often enough to train a probe on. If none does, use larger open models on rented GPUs, or a single-agent impossible-task setting first.
-- **Exists:** scenario format v0, runtime through verifiers, `hack_label`, `propagation`, the report.
+### Q1 — When does the verbalizable space form? · next *(flagship)*
+
+- **Question:** Finished language models hold a shared space of content they are disposed to say, which the J-lens reads. Across training, when does this space appear, how suddenly, at which layers, and does it form before, with or after the skills of Q0?
+- **Deliverable:** The J-lens fitted at each of about 24 log-spaced Pythia checkpoints (70m to 410m, on one 12 GB GPU). At each checkpoint and layer: how well the lens predicts the model's own later output, and whether it reads out concepts that are implied but absent from the prompt. `onsets` and sharpness for each measure, next to the Q0 timeline.
+- **First check:** Does the finished-model result hold on the final Pythia checkpoints? If not, that is the first result.
+- **Done when:** A result note in this repository, with the run that reproduces it. Positive or negative.
+
+### P0 — Do small models exploit tasks? · next
+
+- **Question:** Do models that fit one GPU (0.6B to 4B) exploit impossible tasks, alone and with a shared channel? Because the tasks are impossible, any passing solution is an exploit, so the labels come for free.
+- **Deliverable:** Exploit rate, spread through the channel, and activity for each model, with intervals, on 200 episodes per model. 50 labels checked by hand.
+- **Done when:** One model exploits often enough to study. If none does, use larger open models on rented GPUs.
 
 ### P1 — Detectors at a matched false-positive rate · in review
 
-- **Deliverable:** Detection rate at 1 %, 5 % and 10 % false-positive rate, AUROC, and confidence intervals from a bootstrap over episodes (not rollouts, because agents that share a board are correlated). Spans carry a token range, so a probe can read exactly the tokens of one turn.
-- **Where:** [explorers#1](https://github.com/machine-exploration/explorers/pull/1).
-- **Next after it:** thresholds fit on held-out episodes, not in-sample.
+- **Deliverable:** Detection rate at 1 %, 5 % and 10 % false-positive rate, AUROC, and intervals from a bootstrap over episodes. Spans carry a token range. [explorers#1](https://github.com/machine-exploration/explorers/pull/1).
 
-### P2 — Read activations for episodes · planned
+### Q2 — What does an agent hold, turn by turn? · planned
 
-- **Deliverable:** The core reads `hidden:<layer>` for episode examples: same checkpoint, one prefill pass over the recorded token ids, only the positions in each span's token range. Long agent contexts may need the sidecar scorer ([desk spikes](https://github.com/machine-exploration/explorers/blob/main/docs/desk-spikes-2026-09-27.md)).
-- **Done when:** The prefill reproduces the log-probs of the sampled tokens within numerical tolerance.
+- **Question:** Does the plan to exploit a task appear in the verbalizable space before the action? Does content move from one agent to another through the shared channel?
+- **Needs:** I1, I2, P0.
 
-### P3 — v0.1: monitors at inference · planned
+### Q3 — Disposed to say, compared with said · planned
 
-- **Deliverable:** On the same episodes: an LLM judge, a chain-of-thought monitor, a linear probe, a nonlinear probe, and a steering test along the probe direction. A judge replaces the phrase-echo heuristic for coordination. One assumption-audit table per monitored feature (linearity, locality, sparsity, compositionality), with the audits validated in L2.
-- **Done when:** Results at 1 % and 5 % false-positive rate, with intervals, train and test split by task. Published whether positive or negative.
+- **Question:** Is the gap between what the J-lens reads and what the model outputs a signal for exploits and deception?
+- **Deliverable:** A gap observable for each turn, scored against the exploit labels with P1, next to a chain-of-thought monitor and an LLM judge at the same false-positive rate. Tested by intervention: steering along the readout changes the behaviour.
+- **Needs:** Q2.
 
-## Learning — training time
+### Q4 — The space under training pressure · planned
 
-### L0 — Core primitives and quanta on a toy · done
+- **Question:** During RL on exploitable tasks, when does the exploit plan enter the verbalizable space, and does training against a monitor move it out of that space?
+- **Needs:** I3, Q3.
 
-- **Deliverable:** `explorers-core` (examples, states, observables, engine, store, analyses) and `explorers-learning` (Pythia checkpoints, toy tasks, probes).
-- **Result:** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation between frequency and onset step −0.74), and each is learned suddenly (median sharpness 0.74).
+## Phase 2 — The survey · later
 
-### L1 — Quanta on Pythia · next
+- **Deliverable:** Families of models trained with a full record: dense checkpoints, data order, several seeds and sizes, controlled changes to the data, and agents trained with RL. Published with their stores of measurements as an open dataset.
+- **Starts when:** The instrument is used outside Machine Exploration, and the flagship result is published.
+- **Design questions:** Which families and sizes; which data changes; storage format and budget; publication rules for runs where agents learn to exploit tasks.
 
-- **Question:** Along Pythia's pretraining, when is each token-level sample learned, how suddenly, and are frequent targets learned first ([Michaud et al.](https://arxiv.org/abs/2303.13506))?
-- **Deliverable:** `examples/quanta_pythia.py` on 70m to 1.4b (these fit one 12 GB GPU in fp16): onsets, sharpness, clusters of samples that drop together, correlation with target frequency, across sizes.
-- **Done when:** A result note in this repository, with the run that reproduces it.
+## Phase 3 — The laws · later
 
-### L2 — A known feature across training · next
-
-- **Question:** When does a known feature (for example, number comparison) become linearly decodable, at which layer, and how suddenly?
-- **Deliverable:** The existing probe sweep (checkpoints × layers × probes) rebuilt as core observables. The four assumption audits run on this feature at each checkpoint.
-- **Why here:** The answer is simpler to check than for hacking. The audits are validated here before P3 uses them (ground truth first).
-
-### L3 — Updates and probes · planned
-
-- **Question:** Does a large update in the layer a probe reads predict a drop in the probe's accuracy (drift, open direction 12)?
-- **Deliverable:** Update size and rank per layer between checkpoints (`update_norm`, `stable_rank`), next to probe accuracy from L2.
-- **Baseline:** Re-evaluating the probe on labelled data at each checkpoint. An update signal has value only if it tells us something this baseline does not, or tells it earlier or without labels.
-
-## The join — both clocks
-
-### J1 — Monitors under training, on agent populations · planned
-
-- **Question:** T3 on multi-agent scenarios: how does a monitored feature form, drift and hide during training? Is obfuscation a change in which assumption holds?
-- **Deliverable:** The P3 monitors and audits run on agent episodes across a series of checkpoints. The training uses the hosted route from T1. A second run trains against the probe (obfuscation).
-- **Done when:** Formation, drift and obfuscation each have a result against the label baseline.
-
-### J2 — Transfer · planned
-
-- **Question:** Does a probe trained on one model work on another (other seed, other size), with or without a representation alignment (open direction 10)?
-
-## Later
-
-- A second scenario family (virtual marketplaces) and larger open-weight models.
-- A public catalogue of phenomena for theorists: each entry with the run that reproduces it, its measurements, and the open question it poses. Phenomena from hacking scenarios follow the publication rules; phenomena from toy tasks and public checkpoints can be published first.
-- A shared hub for scenarios, runs, observables and results.
+- **Deliverable:** Regularities, tested on the survey, that predict when a feature, a capability or a behaviour forms, from the data, the architecture, the optimiser and the scale. The hypotheses come from learning mechanics ([open directions](https://learningmechanics.pub/openquestions/)): learning in discrete units (11), low-rank steps (12), bias toward simple solutions (3), a formal definition of features (4), similar representations across models (10).
 
 ## Known risks
 
-- Small models may not hack or coordinate (P0 tests this first).
-- The coordination label is a heuristic until a judge replaces it (P3).
-- Reading activations for long agent contexts on one GPU may need the sidecar and streaming (P2).
-- Hugging Face must be reachable from the machine that runs L1 and L2.
-- Full checkpoints are large. LoRA adapters from hosted runs solve this for T1–T3; for full fine-tunes, keep only the layers that are read, and full checkpoints at log-spaced steps.
-- Reading base + adapter for a 4B model on a 12 GB GPU is tight; start with smaller models.
-- T3 depends on RL producing hacking on the chosen tasks and model.
+- The finished-model result about a verbalizable space may not hold on small models or on Pythia. Q1 checks this first; a negative is still a result.
+- Fitting the J-lens needs backward passes at each checkpoint. Small models and about 100 prompts keep this on one GPU; larger sizes need rented GPUs.
+- Hugging Face must be reachable from the machine that runs Q0 and Q1.
+- Small models may not exploit tasks (P0 tests this before Q2).
+- The coordination label is a heuristic until a judge replaces it.
+- Reading internals of long agent contexts may need streaming (I4).
