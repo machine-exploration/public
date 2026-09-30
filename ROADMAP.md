@@ -28,18 +28,21 @@ Status: **done**, **next**, **planned**, **later**.
 5. **O4 — Watch alongside training** · planned
 6. **Later** — the open scoreboard, pretraining science, a second backend, the planner
 
-## Why post-training first
+## Across the stack: eval, post-training, pretraining
 
-Post-training comes first for three reasons: it has a known answer (we plant what we look for), it is the cheapest (a run is one base model plus small adapters), and it is where most teams train. Pretraining reuses almost the whole engine; two parts change.
+One engine serves every stage: a study is models × examples. Eval and post-training come first: they are what Prime Intellect's stack runs (`uv run eval`, prime-rl) and what most teams do, and they have known answers. Pretraining reuses the same engine later.
 
-| Part | Carries over to pretraining? | Why |
-|---|---|---|
-| Concept lens, study, plan, store, sharding, report | Yes, unchanged | They only need a sequence of model states |
-| Behaviour measure; the question "inside before behaviour" | Yes | The same question on any run |
-| Multi-GPU loading of large models | Yes | The same models |
-| Checkpoint handling | Partly | Pretraining checkpoints are full weights, not adapters. Every checkpoint is modelled as base + change, so no new code path |
-| Reusing the lens across checkpoints | Partly | In a fine-tune the Jacobian may barely move; in pretraining it must be refitted per checkpoint. To be measured |
-| Known ground truth | No, not directly | Nothing is planted in pretraining. Closest: continued pretraining with injected documents, or Pythia's known data order |
+| | Eval | Post-training | Pretraining |
+|---|---|---|---|
+| When | Now | Now | Later |
+| What changes | Nothing: one model, many episodes | A base model, by SFT or RL | Everything, from random weights |
+| Model axis | One checkpoint | Base + LoRA adapter per step | Full checkpoints |
+| Examples from | Eval episodes, replayed | The run's rollouts and eval episodes | A fixed set of texts |
+| Ground truth | Rubric labels per episode; planted models | Planted concepts; rubric labels for reward hacking | Injected documents; known data order (Pythia) |
+| Question | What does the model hold before it answers (eval awareness, a plan to exploit)? | Does what the run instils appear inside before behaviour? | When do representations and the workspace form? |
+| Lens | Fitted once | Maybe fitted once; to be measured | Refitted per checkpoint |
+
+What pretraining adds: loading full checkpoints, refitting the lens per checkpoint, and ground truth by injected documents. Nothing in the engine assumes adapters: every checkpoint is a base plus a change.
 
 ## O0 — Foundations · done
 
@@ -54,6 +57,7 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 - **Concept-targeted lens.** The lens readout for a chosen token is one backward pass (starting from that token's direction through the final norm and unembedding), so k concepts cost k passes, whatever the model's width. The full lens needs `d` passes and grows roughly with d³.
 - **Large models.** 32–70B models loaded across several GPUs; bf16 forward, fp32 accumulation.
 - **Adapter checkpoints** · done. A prime-rl LoRA run keeps only its last two adapters; `ex.archive_adapters` copies each one out as it lands, and `ex.adapters` gives one checkpoint per step, merged into the base at load. Checked: merged equals the adapter run unmerged ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/prime.md)). Next: load the base once and swap the adapter.
+- **Episode replay.** Episodes written by an eval or an RL run become examples: the transcript tokenised as the model saw it, with the positions of each model turn. Check: replayed log-probabilities of the sampled tokens equal those the inference server recorded, within a stated bf16 tolerance.
 - **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across Prime Intellect pods with no coordination.
 - **Done when:** on a 7–8B model the concept lens equals the full lens on those concepts (exact by construction); a 70B checkpoint with 10 concepts runs in minutes, with the cost published.
 
@@ -80,7 +84,7 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 ## Later
 
 - **The open scoreboard.** Any white-box method, submitted as a measure, scored on the same runs, sizes and checks, with its cost. Methods that pass become monitors; new ones are found against it.
-- **Pretraining science.** When does the verbalizable workspace form during pretraining, how suddenly, at which depths and from which size? On Pythia's checkpoints, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Then how mechanisms form: induction heads, representation vs use, circuit replacement.
+- **Pretraining science** (see Across the stack). When does the verbalizable workspace form during pretraining, how suddenly, at which depths and from which size? On Pythia's checkpoints, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Then how mechanisms form: induction heads, representation vs use, circuit replacement.
 - **A second backend** (NNsight or TransformerLens) giving the same results within a stated tolerance.
 - **The planner:** shared computation up to an intervention point, batched counterfactuals, measured against existing tools on the same study.
 - **Whole-space signatures at large scale** through sketches, checked against the exact Jacobian on smaller models.

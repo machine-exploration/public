@@ -2,7 +2,7 @@
 
 **See inside training.**
 
-White-box oversight for training and post-training runs: what a run puts inside a model, at every checkpoint, before it shows in behaviour.
+White-box oversight for evals and post-training runs: what a model holds before it answers, and what a run puts inside it before it shows in behaviour. Pretraining next, on the same engine.
 
 We are building the infrastructure for a science of deep learning. Runs on [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
@@ -33,6 +33,7 @@ Change the backend, keep the study, get the same result.
 ## First questions
 
 - **Planted concepts.** A concept is fine-tuned into a large model. Does it appear inside before it shows in behaviour?
+- **Replayed evals.** Every episode of an eval, replayed through the model: what does it hold before it answers (eval awareness, a plan to exploit)?
 - **The verbalizable space.** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form, and how does post-training change it?
 
 ## Principles
