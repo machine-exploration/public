@@ -15,7 +15,7 @@ A neural network is a learned computation. Its weights are the program; its inte
 | | |
 |---|---|
 | **[Explorers](https://github.com/machine-exploration/explorers)** | The interface. Six concepts: Model, Stream, Trace, Op, Measure, Study. |
-| **Runtime** | [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl): trains, serves and scores the run. Explorers reads what it writes, on the same machines. |
+| **Runtime** | [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl): trains, serves and scores the run. Explorers reads what it writes, on the same machines. Planned: its trainer also runs the large forward and backward passes that white-box methods need on 70B+ models. |
 | **[Mechanics](https://github.com/machine-exploration/mechanics)** | The research: how training creates representations, algorithms and circuits. |
 
 ```python
@@ -32,7 +32,7 @@ Change the backend, keep the study, get the same result.
 
 ## First questions
 
-- **Planted concepts.** A concept is fine-tuned into a large model. Does it appear inside before it shows in behaviour?
+- **Planted concepts.** A concept is fine-tuned into a large model. Which methods see it inside before it shows in behaviour, and at what cost? First entries: a linear probe (cheap to fit, needs labels), the Jacobian lens (no labels, reads anything the model could say, costly to fit in full) and the logit lens (the baseline).
 - **Replayed evals.** Every episode of an eval, replayed through the model: what does it hold before it answers (eval awareness, a plan to exploit)?
 - **The verbalizable space.** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form, and how does post-training change it?
 
