@@ -1,12 +1,12 @@
 # Machine Exploration
 
-> **Machine Exploration is building the infrastructure for a science of intelligence.**
+> **Machine Exploration is building the infrastructure for a science of deep learning.**
 
 We want to understand how intelligence emerges inside deep learning systems: how representations and mechanisms form during training, how they change, and how they give rise to behavior.
 
 Our focus is **white-box experimentation at scale**: making it possible to observe, measure, and intervene on the internal computation of models across training and deployment.
 
-The long-term goal is to turn interpretability from a collection of techniques into an empirical science of learned intelligence. If we can understand these systems from the inside, we should also be able to build much stronger methods for monitoring and controlling them as they become more capable.
+The long-term goal is to turn interpretability from a collection of techniques into an empirical science of deep learning. If we can understand these systems from the inside, we should also be able to build much stronger methods for monitoring and controlling them as they become more capable.
 
 The interface, the Runtime, the formats, the runs and the results are open source. **Status: pre-alpha.** The plan is in [ROADMAP.md](ROADMAP.md).
 
