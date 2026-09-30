@@ -1,10 +1,14 @@
 # Machine Exploration
 
-**See inside training.**
+**See inside the model.**
 
-White-box oversight for evals and post-training runs: what a model holds before it answers, and what a run puts inside it before it shows in behaviour. Pretraining next, on the same engine.
+We have spent billions of dollars of compute producing models nobody has mapped. Machine Exploration builds the open stack to run white-box interpretability methods at scale, across the whole life of a model: pretraining, post-training, evals and deployment.
 
-We are building the infrastructure for a science of deep learning. Runs on [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
+The evidence that this works is recent. Activation probes catch reward hacking in frontier open models about as well as chain-of-thought monitors, at a fraction of the cost ([Goodfire, 2026](https://arxiv.org/abs/2609.19101)). The Jacobian lens reads what a model is poised to say from any layer, without labels ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). Our first result puts the two side by side on the same runs: can a monitor that needs no labels match one that does?
+
+These monitors read activations the model already computes. They add no latency, cost almost nothing per token, never change the model's outputs, and work on any open model. Each targets one behaviour, and hundreds run in parallel as one matrix product per layer. Long term, the stack is where new white-box methods are discovered: every method scored against known answers, at every stage, at scale, with its cost.
+
+Runs on [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
 ## Thesis
 
@@ -32,7 +36,7 @@ Change the backend, keep the study, get the same result.
 
 ## First questions
 
-- **Planted concepts.** A concept is fine-tuned into a large model. Which methods see it inside before it shows in behaviour, and at what cost? First entries: a linear probe (cheap to fit, needs labels), the Jacobian lens (no labels, reads anything the model could say, costly to fit in full) and the logit lens (the baseline).
+- **Reward hacking, without labels.** On an exploitable coding environment, does a Jacobian-lens monitor (no labels) catch hacks as well as a difference-of-means probe (labels), at a matched false-positive rate and at what cost? First checked on a planted concept, where the answer is known.
 - **Replayed evals.** Every episode of an eval, replayed through the model: what does it hold before it answers (eval awareness, a plan to exploit)?
 - **The verbalizable space.** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form, and how does post-training change it?
 
