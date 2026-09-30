@@ -95,7 +95,7 @@ An open leaderboard of white-box monitoring methods on real rollouts: how much e
 
 ## Known risks
 
-- **Planted concepts can be overfitted.** Held-out kinds of concept and a natural case (O3) keep the harness honest.
+- **Planted concepts can be overfitted.** Held-out environments and real rollouts (O2) keep the Arena honest.
 
 - **We depend on prime-rl's file layout.** It is read at a pinned commit and tested; `explorers` never imports prime-rl, so a change breaks one reader, not the library.
 
