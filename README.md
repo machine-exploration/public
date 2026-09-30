@@ -6,7 +6,7 @@ The evidence that this works is recent. Activation probes catch reward hacking i
 
 These monitors read activations the model already computes. They add no latency, cost almost nothing per token, never change the model's outputs, and work on any open model. Each targets one behaviour, and hundreds run in parallel as one matrix product per layer. Long term, the stack is where new white-box methods are discovered: every method scored against known answers, at every stage, at scale, with its cost.
 
-Runs on [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
+Works with any training stack; the first integration is [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
 ## Thesis
 
@@ -17,7 +17,7 @@ A neural network is a learned computation. Its weights are the program; its inte
 | | |
 |---|---|
 | **[Explorers](https://github.com/machine-exploration/explorers)** | The interface. Six concepts: Model, Stream, Trace, Op, Measure, Study. |
-| **Runtime** | [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl): trains, serves and scores the run. Explorers reads what it writes, on the same machines. Planned: its trainer also runs the large forward and backward passes that white-box methods need on 70B+ models. |
+| **Training stacks** | Whatever trains, serves and scores the model: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. Planned: other trainers as users ask, and a trainer backend for the large passes white-box methods need on 70B+ models. |
 | **[Mechanics](https://github.com/machine-exploration/mechanics)** | The research: how training creates representations, algorithms and circuits. |
 
 ```python

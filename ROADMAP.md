@@ -15,7 +15,7 @@
 
 Once verification is cheap, finding new methods that scale becomes a loop anyone can run.
 
-**Runs on Prime Intellect.** Its stack (pods, [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl), [verifiers](https://github.com/PrimeIntellect-ai/verifiers), vLLM) trains, serves and scores the run. `explorers` opens what the run writes and measures what is inside, on the same machines. We do not build our own runtime.
+**Any training stack; Prime Intellect first.** Whatever trains, serves and scores a model stays where it is; `explorers` reads what it writes (checkpoints, adapters, rollouts) through a thin adapter per stack and measures what is inside, on the same machines. We do not build our own runtime. The first integration is Prime Intellect's stack (pods, [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl), [verifiers](https://github.com/PrimeIntellect-ai/verifiers), vLLM), for its reach; others follow as users ask.
 
 A step belongs here if it scales a white-box method to large models, builds the infrastructure to run it across training runs, or produces an oversight result. Each step has a deliverable and a condition that says when it is done. There are no dates.
 
@@ -30,7 +30,7 @@ Status: **done**, **next**, **planned**, **later**.
 
 ## Across the stack: eval, post-training, pretraining
 
-One engine serves every stage: a study is models × examples. Eval and post-training come first: they are what Prime Intellect's stack runs (`uv run eval`, prime-rl) and what most teams do, and they have known answers. Pretraining reuses the same engine later.
+One engine serves every stage: a study is models × examples. Eval and post-training come first: they are what most teams do, and what our first integration runs (`uv run eval`, prime-rl), and they have known answers. Pretraining reuses the same engine later.
 
 | | Eval | Post-training | Pretraining |
 |---|---|---|---|
@@ -58,7 +58,7 @@ What pretraining adds: loading full checkpoints, refitting the lens per checkpoi
 - **Large models.** 32–70B models loaded across several GPUs; bf16 forward, fp32 accumulation.
 - **Adapter checkpoints** · done. A prime-rl LoRA run keeps only its last two adapters; `ex.archive_adapters` copies each one out as it lands, and `ex.adapters` gives one checkpoint per step, merged into the base at load. Checked: merged equals the adapter run unmerged ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/prime.md)). Next: load the base once and swap the adapter.
 - **Episode replay.** Episodes written by an eval or an RL run become examples: the transcript tokenised as the model saw it, with the positions of each model turn. Check: replayed log-probabilities of the sampled tokens equal those the inference server recorded, within a stated bf16 tolerance.
-- **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across Prime Intellect pods with no coordination.
+- **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across rented GPUs (Prime Intellect pods first) with no coordination.
 - **Done when:** on a 7–8B model the concept lens equals the full lens on those concepts (exact by construction); a 70B checkpoint with 10 concepts runs in minutes, with the cost published.
 
 ## O2 — The harness and its first entries · next
