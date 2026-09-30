@@ -87,7 +87,6 @@ An open leaderboard of white-box monitoring methods on real rollouts: how much e
 
 ## Later
 
-- **The open scoreboard.** Any white-box method, submitted as a measure, scored on the same runs, sizes and checks, with its cost. Methods that pass become monitors; new ones are found against it.
 - **Pretraining science** (see Across the stack). When does the verbalizable workspace form during pretraining, how suddenly, at which depths and from which size? On Pythia's checkpoints, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Then how mechanisms form: induction heads, representation vs use, circuit replacement.
 - **A second backend** (NNsight or TransformerLens) giving the same results within a stated tolerance.
 - **The planner:** shared computation up to an intervention point, batched counterfactuals, measured against existing tools on the same study.
