@@ -4,7 +4,7 @@
 
 White-box oversight for training and post-training runs: what a run puts inside a model, at every checkpoint, before it shows in behaviour.
 
-We are building the infrastructure for a science of deep learning. Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
+We are building the infrastructure for a science of deep learning. Runs on [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
 ## Thesis
 
@@ -15,16 +15,16 @@ A neural network is a learned computation. Its weights are the program; its inte
 | | |
 |---|---|
 | **[Explorers](https://github.com/machine-exploration/explorers)** | The interface. Six concepts: Model, Stream, Trace, Op, Measure, Study. |
-| **Runtime** | Runs a study across a whole training or post-training run of a large model, where the weights are. |
+| **Runtime** | [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl): trains, serves and scores the run. Explorers reads what it writes, on the same machines. |
 | **[Mechanics](https://github.com/machine-exploration/mechanics)** | The research: how training creates representations, algorithms and circuits. |
 
 ```python
 import explorers as ex
 
-checkpoints = ex.checkpoints("EleutherAI/pythia-410m", steps=[0, 1000, 143000])
+ex.archive_adapters("outputs/my-run", "runs/my-run/adapters")    # a prime-rl LoRA run, as it trains
+checkpoints = ex.adapters("Qwen/Qwen3-8B", "runs/my-run/adapters", device="cuda", dtype="bfloat16")
 study = ex.Study(checkpoints, examples)
-study.read("residual", layers="*", position=-1)
-study.measure(ex.measures.loss, ex.measures.jlens_error(layers=range(1, 24)))
+study.measure(ex.measures.loss, ex.measures.jlens_error(layers=range(1, 36)))
 results = study.compute(store="runs/store")   # xarray, indexed by step, cached by content
 ```
 

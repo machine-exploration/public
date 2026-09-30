@@ -2,6 +2,8 @@
 
 **Focus: white-box oversight at scale.** Run interpretability measurements on large models, at every checkpoint of their training and post-training, and show that they see what training puts inside a model before it shows in behaviour.
 
+**Runs on Prime Intellect.** Its stack (pods, [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl), [verifiers](https://github.com/PrimeIntellect-ai/verifiers), vLLM) trains, serves and scores the run. `explorers` opens what the run writes and measures what is inside, on the same machines. We do not build our own runtime.
+
 A step belongs here if it scales a white-box method to large models, builds the infrastructure to run it across training runs, or produces an oversight result. Each step has a deliverable and a condition that says when it is done. There are no dates.
 
 Status: **done**, **next**, **planned**, **later**.
@@ -10,7 +12,7 @@ Status: **done**, **next**, **planned**, **later**.
 2. **O1 — The instrument at scale** · next
 3. **O2 — An oversight result with a known answer** · next
 4. **O3 — An oversight result on a realistic run** · planned
-5. **O4 — The Runtime alongside training** · planned
+5. **O4 — Watch alongside training** · planned
 6. **Later** — pretraining science, a second backend, the planner
 
 ## Why post-training first
@@ -38,14 +40,14 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 
 - **Concept-targeted lens.** The lens readout for a chosen token is one backward pass (starting from that token's direction through the final norm and unembedding), so k concepts cost k passes, whatever the model's width. The full lens needs `d` passes and grows roughly with d³.
 - **Large models.** 32–70B models loaded across several GPUs; bf16 forward, fp32 accumulation.
-- **Adapter checkpoints.** A fine-tuning run is one base model plus small LoRA adapters: the base is loaded once, the adapter swapped per checkpoint.
-- **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across GPUs on rented machines with no coordination.
+- **Adapter checkpoints** · done. A prime-rl LoRA run keeps only its last two adapters; `ex.archive_adapters` copies each one out as it lands, and `ex.adapters` gives one checkpoint per step, merged into the base at load. Checked: merged equals the adapter run unmerged ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/prime.md)). Next: load the base once and swap the adapter.
+- **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across Prime Intellect pods with no coordination.
 - **Done when:** on a 7–8B model the concept lens equals the full lens on those concepts (exact by construction); a 70B checkpoint with 10 concepts runs in minutes, with the cost published.
 
 ## O2 — An oversight result with a known answer · next
 
 - **Question:** when a concept is planted in a large open model by fine-tuning, does it appear inside the model before it shows in behaviour, and by how many checkpoints?
-- **Study:** LoRA fine-tuning on synthetic documents that tie a trigger topic to a single-token concept; a checkpoint every few steps. At each checkpoint: behaviour (the model says the concept in trigger contexts) and inside (the concept's rank in the lens at trigger positions, before any output).
+- **Study:** a prime-rl LoRA fine-tune on synthetic documents that tie a trigger topic to a single-token concept; a checkpoint every few steps. At each checkpoint: behaviour (the model says the concept in trigger contexts) and inside (the concept's rank in the lens at trigger positions, before any output).
 - **Controls:** contexts without the trigger; the logit lens; a concept never planted; the base model.
 - **Order:** the whole pipeline on a 7–8B model first, then 32–70B.
 - **Done when:** a result note in this repository, with the run that reproduces it. Positive or negative.
@@ -54,11 +56,11 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 
 - **Question:** during RL post-training on exploitable tasks, does the plan to exploit appear inside the model before the exploit shows? Does the signal survive training against a monitor?
 - **Deliverable:** detection rate at 1%, 5% and 10% false-positive rate, with intervals from a bootstrap over episodes, against a chain-of-thought monitor and an LLM judge at the same false-positive rate.
-- **Needs:** RL infrastructure reused (the pinned [verifiers](https://github.com/machine-exploration/verifiers) fork or equivalent), and the contained agent scenarios of `explorers.populations`, frozen until then.
+- **Needs:** an RL run in prime-rl on verifiers environments with exploitable tasks, contained (no network, no path between episodes); the episodes it writes become the examples of the study.
 
-## O4 — The Runtime alongside training · planned
+## O4 — Watch alongside training · planned
 
-- **Deliverable:** `watch(training_run, every=N, measures=[...])`: the same studies running next to a training or post-training run, beside the loss, the reward and the evals; per-run reports; alerts when something appears inside before it appears in behaviour. It runs where the weights are, including a team's own cluster. Open source, like the interface.
+- **Deliverable:** `watch(run, every=N, measures=[...])`: the same studies running next to a prime-rl run, beside the loss, the reward and the evals; per-run reports; alerts when something appears inside before it appears in behaviour. First beside the trainer on the files it writes, then as a hook inside it on the live weights. It runs where the weights are, including a team's own cluster. Open source.
 - **Done when:** a team runs it on its own training run.
 
 ## Later
@@ -69,6 +71,8 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 - **Whole-space signatures at large scale** through sketches, checked against the exact Jacobian on smaller models.
 
 ## Known risks
+
+- **We depend on prime-rl's file layout.** It is read at a pinned commit and tested; `explorers` never imports prime-rl, so a change breaks one reader, not the library.
 
 - **The planted concept may not lead behaviour.** The result is published either way, with its controls.
 - **A readable workspace may need size.** Each model is checked first: does the paper's layer structure appear at the final checkpoint?
