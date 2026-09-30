@@ -23,10 +23,10 @@ Status: **done**, **next**, **planned**, **later**.
 
 1. **O0 — Foundations** · done
 2. **O1 — The instrument at scale** · next
-3. **O2 — The harness and its first entries** · next
-4. **O3 — The natural case: reward hacking** · planned
+3. **O2 — The Monitor Arena, first track: reward hacking** · next
+4. **O3 — More tracks: RL runs, pressure, more models** · planned
 5. **O4 — Watch alongside training** · planned
-6. **Later** — the open scoreboard, pretraining science, a second backend, the planner
+6. **Later** — pretraining science, a second backend, the planner
 
 ## Across the stack: eval, post-training, pretraining
 
@@ -61,20 +61,24 @@ What pretraining adds: loading full checkpoints, refitting the lens per checkpoi
 - **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across rented GPUs (Prime Intellect pods first) with no coordination.
 - **Done when:** on a 7–8B model the concept lens equals the full lens on those concepts (exact by construction); a 70B checkpoint with 10 concepts runs in minutes, with the cost published.
 
-## O2 — The harness and its first entries · next
+## O2 — The Monitor Arena, first track: reward hacking · next
 
-- **Question:** when a concept is planted in a large open model by fine-tuning, which white-box methods see it inside before it shows in behaviour, by how many checkpoints, at which size, and at what cost per token?
-- **Entries:** the Jacobian lens restricted to the concept; a linear probe per layer, trained on the base model and applied at every checkpoint; the logit lens. Each is a measure, scored the same way.
-- **Study:** a prime-rl LoRA fine-tune on synthetic documents that tie a trigger topic to a single-token concept; a checkpoint every few steps. At each checkpoint: behaviour (the model says the concept in trigger contexts) and inside (each method's score for the concept at trigger positions, before any output: its rank in a lens, a probe's output).
-- **Controls:** contexts without the trigger; a concept never planted; the base model. Some kinds of planted concept are held out and never used while developing a method, so methods cannot overfit to the organisms.
-- **Order:** the whole pipeline on a 7–8B model first, then 32–70B.
-- **Done when:** a result note in this repository with, for each method and size, checkpoints of lead over behaviour and cost per token, and the run that reproduces it. Positive or negative.
+An open leaderboard of white-box monitoring methods on real rollouts: how much each one catches, what it costs and how far it scales, measured the same way for every method.
 
-## O3 — The natural case: reward hacking · planned
+- **Rows:** methods, each a measure anyone can submit. First entries: a difference-of-means probe (the protocol of [Goodfire, 2026](https://arxiv.org/abs/2609.19101)), the concept Jacobian lens (a direction from words, no data), the logit lens; baselines: an LLM monitor and a chain-of-thought monitor.
+- **Columns:** quality (detection at 1% and 5% false-positive rate, AUROC, how early in a rollout it fires), cost (data needed to fit: none, words, synthetic pairs or labels; fit compute; FLOPs and latency per token), scale (largest model, rollout length, monitors run at once).
+- **Tracks:** one per environment × model. Rollouts and labels come from [verifiers](https://github.com/PrimeIntellect-ai/verifiers) environments and their rubrics; `explorers` replays each episode through the model and scores every method on it. Some environments are held out and never used to develop a method.
+- **First track:** ImpossibleBench (its tasks cannot be solved honestly, so a pass is a hack by construction) on a model that fits one GPU, then larger models.
+- **Checked first where the answer is known:** a concept planted by a LoRA fine-tune, where every method must find what was planted before it is trusted on real rollouts.
+- **Zero-cost first look:** at the same layer, the cosine similarity between the probe's direction and the concept directions for words such as "cheating", "hack", "hardcoded".
+- **Done when:** the first track is public, each row with the run that reproduces it. Positive or negative.
 
-- **Question:** during RL post-training on exploitable tasks, does the plan to exploit appear inside the model before the exploit shows? Nothing is planted: the environment's rubric labels each episode. Does the signal survive training against a monitor?
-- **Deliverable:** detection rate at 1%, 5% and 10% false-positive rate, with intervals from a bootstrap over episodes, against a chain-of-thought monitor and an LLM judge at the same false-positive rate.
-- **Needs:** an RL run in prime-rl on verifiers environments with exploitable tasks, contained (no network, no path between episodes); the episodes it writes become the examples of the study.
+## O3 — More tracks: RL runs, pressure, more models · planned
+
+- **RL runs:** the same methods during RL post-training on exploitable tasks: does the plan to exploit appear inside before the exploit shows?
+- **Pressure:** train against a monitor; does its signal survive?
+- **More tracks:** more environments (SWE-bench, DeepSWE, non-coding), more and larger models (through a trainer backend for 70B+).
+- **Needs:** contained runs (no network, no path between episodes).
 
 ## O4 — Watch alongside training · planned
 

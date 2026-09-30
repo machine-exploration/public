@@ -34,6 +34,7 @@ Change the backend, keep the study, get the same result.
 
 ## First questions
 
+- **The Monitor Arena.** An open leaderboard of white-box monitoring methods on real rollouts: how much each catches, what it costs and how far it scales. First track: reward hacking, where a Jacobian-lens monitor built from words is set against a difference-of-means probe.
 - **Reward hacking, without labels.** On an exploitable coding environment, does a Jacobian-lens monitor (no labels) catch hacks as well as a difference-of-means probe (labels), at a matched false-positive rate and at what cost? First checked on a planted concept, where the answer is known.
 - **Replayed evals.** Every episode of an eval, replayed through the model: what does it hold before it answers (eval awareness, a plan to exploit)?
 - **The verbalizable space.** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form, and how does post-training change it?
