@@ -1,6 +1,19 @@
 # Roadmap
 
-**Focus: white-box oversight at scale.** Run interpretability measurements on large models, at every checkpoint of their training and post-training, and show that they see what training puts inside a model before it shows in behaviour.
+**Focus: white-box oversight at scale, with methods verified to scale.** Run interpretability measurements on large models, at every checkpoint of their training and post-training, and show that they see what training puts inside a model before it shows in behaviour.
+
+**Verification first.** Tasks that are cheap to verify get solved fast. White-box methods are not: when a method says "the model is thinking about X", nobody can usually check it. We make them cheap to verify, and a method is trusted only after it passes the same checks as every other:
+
+| Axis | Cheap verification from |
+|---|---|
+| Ground truth | Planted concepts: trained in, so the answer is known |
+| Scale | The same planted concept at several model sizes |
+| Training time | Every checkpoint of a real run |
+| Real behaviour | verifiers rubrics say whether an episode hacked its reward: a label for free |
+| Pressure | Train against the monitor; does the signal survive? |
+| Cost | FLOPs and latency per token, measured |
+
+Once verification is cheap, finding new methods that scale becomes a loop anyone can run.
 
 **Runs on Prime Intellect.** Its stack (pods, [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl), [verifiers](https://github.com/PrimeIntellect-ai/verifiers), vLLM) trains, serves and scores the run. `explorers` opens what the run writes and measures what is inside, on the same machines. We do not build our own runtime.
 
@@ -10,10 +23,10 @@ Status: **done**, **next**, **planned**, **later**.
 
 1. **O0 — Foundations** · done
 2. **O1 — The instrument at scale** · next
-3. **O2 — An oversight result with a known answer** · next
-4. **O3 — An oversight result on a realistic run** · planned
+3. **O2 — The harness and its first entries** · next
+4. **O3 — The natural case: reward hacking** · planned
 5. **O4 — Watch alongside training** · planned
-6. **Later** — pretraining science, a second backend, the planner
+6. **Later** — the open scoreboard, pretraining science, a second backend, the planner
 
 ## Why post-training first
 
@@ -44,17 +57,18 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 - **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across Prime Intellect pods with no coordination.
 - **Done when:** on a 7–8B model the concept lens equals the full lens on those concepts (exact by construction); a 70B checkpoint with 10 concepts runs in minutes, with the cost published.
 
-## O2 — An oversight result with a known answer · next
+## O2 — The harness and its first entries · next
 
-- **Question:** when a concept is planted in a large open model by fine-tuning, does it appear inside the model before it shows in behaviour, and by how many checkpoints?
+- **Question:** when a concept is planted in a large open model by fine-tuning, which white-box methods see it inside before it shows in behaviour, by how many checkpoints, at which size, and at what cost per token?
+- **Entries:** the Jacobian lens restricted to the concept; a linear probe per layer, trained on the base model and applied at every checkpoint; the logit lens. Each is a measure, scored the same way.
 - **Study:** a prime-rl LoRA fine-tune on synthetic documents that tie a trigger topic to a single-token concept; a checkpoint every few steps. At each checkpoint: behaviour (the model says the concept in trigger contexts) and inside (the concept's rank in the lens at trigger positions, before any output).
-- **Controls:** contexts without the trigger; the logit lens; a concept never planted; the base model.
+- **Controls:** contexts without the trigger; a concept never planted; the base model. Some kinds of planted concept are held out and never used while developing a method, so methods cannot overfit to the organisms.
 - **Order:** the whole pipeline on a 7–8B model first, then 32–70B.
-- **Done when:** a result note in this repository, with the run that reproduces it. Positive or negative.
+- **Done when:** a result note in this repository with, for each method and size, checkpoints of lead over behaviour and cost per token, and the run that reproduces it. Positive or negative.
 
-## O3 — An oversight result on a realistic run · planned
+## O3 — The natural case: reward hacking · planned
 
-- **Question:** during RL post-training on exploitable tasks, does the plan to exploit appear inside the model before the exploit shows? Does the signal survive training against a monitor?
+- **Question:** during RL post-training on exploitable tasks, does the plan to exploit appear inside the model before the exploit shows? Nothing is planted: the environment's rubric labels each episode. Does the signal survive training against a monitor?
 - **Deliverable:** detection rate at 1%, 5% and 10% false-positive rate, with intervals from a bootstrap over episodes, against a chain-of-thought monitor and an LLM judge at the same false-positive rate.
 - **Needs:** an RL run in prime-rl on verifiers environments with exploitable tasks, contained (no network, no path between episodes); the episodes it writes become the examples of the study.
 
@@ -65,12 +79,15 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 
 ## Later
 
+- **The open scoreboard.** Any white-box method, submitted as a measure, scored on the same runs, sizes and checks, with its cost. Methods that pass become monitors; new ones are found against it.
 - **Pretraining science.** When does the verbalizable workspace form during pretraining, how suddenly, at which depths and from which size? On Pythia's checkpoints, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Then how mechanisms form: induction heads, representation vs use, circuit replacement.
 - **A second backend** (NNsight or TransformerLens) giving the same results within a stated tolerance.
 - **The planner:** shared computation up to an intervention point, batched counterfactuals, measured against existing tools on the same study.
 - **Whole-space signatures at large scale** through sketches, checked against the exact Jacobian on smaller models.
 
 ## Known risks
+
+- **Planted concepts can be overfitted.** Held-out kinds of concept and a natural case (O3) keep the harness honest.
 
 - **We depend on prime-rl's file layout.** It is read at a pinned commit and tested; `explorers` never imports prime-rl, so a change breaks one reader, not the library.
 
