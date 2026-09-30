@@ -61,7 +61,7 @@ Post-training comes first for three reasons: it has a known answer (we plant wha
 
 - **Question:** when a concept is planted in a large open model by fine-tuning, which white-box methods see it inside before it shows in behaviour, by how many checkpoints, at which size, and at what cost per token?
 - **Entries:** the Jacobian lens restricted to the concept; a linear probe per layer, trained on the base model and applied at every checkpoint; the logit lens. Each is a measure, scored the same way.
-- **Study:** a prime-rl LoRA fine-tune on synthetic documents that tie a trigger topic to a single-token concept; a checkpoint every few steps. At each checkpoint: behaviour (the model says the concept in trigger contexts) and inside (the concept's rank in the lens at trigger positions, before any output).
+- **Study:** a prime-rl LoRA fine-tune on synthetic documents that tie a trigger topic to a single-token concept; a checkpoint every few steps. At each checkpoint: behaviour (the model says the concept in trigger contexts) and inside (each method's score for the concept at trigger positions, before any output: its rank in a lens, a probe's output).
 - **Controls:** contexts without the trigger; a concept never planted; the base model. Some kinds of planted concept are held out and never used while developing a method, so methods cannot overfit to the organisms.
 - **Order:** the whole pipeline on a 7–8B model first, then 32–70B.
 - **Done when:** a result note in this repository with, for each method and size, checkpoints of lead over behaviour and cost per token, and the run that reproduces it. Positive or negative.
