@@ -1,134 +1,76 @@
 # Roadmap
 
-Five phases, in order. Each step has a question, a deliverable, and a condition that says when it is done. There are no dates.
+**Focus: white-box oversight at scale.** Run interpretability measurements on large models, at every checkpoint of their training and post-training, and show that they see what training puts inside a model before it shows in behaviour.
 
-1. **The primitive** — Explorers: read, write and trace, and the study as the unit of work.
-2. **The scaling proof** — one expensive experiment, made much cheaper by planning its execution.
-3. **The Runtime** — the same study, executed at scale.
-4. **Mechanics** — original science on how training creates computation.
-5. **Training integration** — the same studies, running alongside training.
+A step belongs here if it scales a white-box method to large models, builds the infrastructure to run it across training runs, or produces an oversight result. Each step has a deliverable and a condition that says when it is done. There are no dates.
 
-Status: **done**, **in review**, **next**, **planned**, **later**.
+Status: **done**, **next**, **planned**, **later**.
 
-## Phase 1 — The primitive
+1. **O0 — Foundations** · done
+2. **O1 — The instrument at scale** · next
+3. **O2 — An oversight result with a known answer** · next
+4. **O3 — An oversight result on a realistic run** · planned
+5. **O4 — The Runtime alongside training** · planned
+6. **Later** — pretraining science, a second backend, the planner
 
-The criterion is not the number of methods. It is: can researchers express probes, steering, patching, attribution and sparse autoencoders naturally, as compositions over the same execution model?
+## Why post-training first
 
-### Step 0 — One library · done
+Post-training comes first for three reasons: it has a known answer (we plant what we look for), it is the cheapest (a run is one base model plus small adapters), and it is where most teams train. Pretraining reuses almost the whole engine; two parts change.
 
-- **Result:** The `explorers` repository is one `uv` workspace with `explorers.core`, `explorers.learning` and `explorers.populations`, and the history of both former repositories. The three packages install and import together (before, the prototype's `explorers/__init__.py` hid `explorers.core`). 76 tests pass from a fresh clone. `mechanics` holds research only and installs `explorers` from GitHub; its toy quanta run reproduces the result.
+| Part | Carries over to pretraining? | Why |
+|---|---|---|
+| Concept lens, study, plan, store, sharding, report | Yes, unchanged | They only need a sequence of model states |
+| Behaviour measure; the question "inside before behaviour" | Yes | The same question on any run |
+| Multi-GPU loading of large models | Yes | The same models |
+| Checkpoint handling | Partly | Pretraining checkpoints are full weights, not adapters. Every checkpoint is modelled as base + change, so no new code path |
+| Reusing the lens across checkpoints | Partly | In a fine-tune the Jacobian may barely move; in pretraining it must be refitted per checkpoint. To be measured |
+| Known ground truth | No, not directly | Nothing is planted in pretraining. Closest: continued pretraining with injected documents, or Pythia's known data order |
 
-### E1 — Streams: read, write, trace · done
+## O0 — Foundations · done
 
-- **Deliverable:** Named streams (`residual`, `attn_out`, `mlp_out`) with locations (layer, position), on Hugging Face / PyTorch models:
+- **One library.** `explorers` is one package with six concepts: models with named streams, traces, ops (interventions as data), measures, studies, and a store keyed by content. The design fits on [one page](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md); library code went from 2,253 to 1,775 lines in the lean pass with identical results.
+- **Streams: read, write, trace.** `residual`, `attn_out` and `mlp_out` on GPT-NeoX, Llama and GPT-2 layouts. Reads equal what hand-written hooks return; a write changes exactly its target.
+- **The study.** Reads, writes, measures and patching (exact and attribution) over models or the checkpoints of a run, cached by content. Five canonical examples (a linear probe, steering, activation patching, attribution patching, a sparse autoencoder read) are checked against results that are exact by construction.
+- **The Jacobian lens.** Implemented and checked against the [reference implementation](https://github.com/anthropics/jacobian-lens): `J` agrees within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/jlens.md)). The paper's four workspace signatures (dimension, sparsity of readouts, persistence, cross-layer similarity) are measures, with a Jacobian of the final or the penultimate residual.
+- **A reproduced result.** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), each suddenly (median sharpness 0.74).
 
-  ```python
-  model = ex.open("EleutherAI/pythia-70m")
-  with model.trace(prompt) as run:
-      resid = run.stream("residual")
-      x = resid.read(layer=3, position=-1)
-      resid.write(layer=3, position=-1, fn=lambda h: h + direction)
-  ```
-- **Done when:** Reads equal what hand-written hooks return; a write changes exactly the targeted location; a stable name for a site holds across checkpoints of one model.
+## O1 — The instrument at scale · next
 
-### E2 — The study · done
+- **Concept-targeted lens.** The lens readout for a chosen token is one backward pass (starting from that token's direction through the final norm and unembedding), so k concepts cost k passes, whatever the model's width. The full lens needs `d` passes and grows roughly with d³.
+- **Large models.** 32–70B models loaded across several GPUs; bf16 forward, fp32 accumulation.
+- **Adapter checkpoints.** A fine-tuning run is one base model plus small LoRA adapters: the base is loaded once, the adapter swapped per checkpoint.
+- **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across GPUs on rented machines with no coordination.
+- **Done when:** on a 7–8B model the concept lens equals the full lens on those concepts (exact by construction); a 70B checkpoint with 10 concepts runs in minutes, with the cost published.
 
-- **Deliverable:** `Study`: reads, writes (steering, ablation, patching) and measurements over models × checkpoints × examples, compiled to the existing engine (one forward pass per state, results stored by content).
-- **Done when:** Five canonical examples run as studies, each checked against a known result: a linear probe, steering along a direction, activation patching, attribution patching, and a sparse autoencoder read.
+## O2 — An oversight result with a known answer · next
 
-- **Result (E1, E2):** `ex.open`, `model.trace`, streams `residual` / `attn_out` / `mlp_out` on GPT-NeoX, Llama and GPT-2 layouts; `Study` with reads, writes, measures and patching (exact and attribution) over models or the checkpoints of a run. The five examples are checked against results that are exact by construction on any weights ([design](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md)). The library is one package, `explorers`.
+- **Question:** when a concept is planted in a large open model by fine-tuning, does it appear inside the model before it shows in behaviour, and by how many checkpoints?
+- **Study:** LoRA fine-tuning on synthetic documents that tie a trigger topic to a single-token concept; a checkpoint every few steps. At each checkpoint: behaviour (the model says the concept in trigger contexts) and inside (the concept's rank in the lens at trigger positions, before any output).
+- **Controls:** contexts without the trigger; the logit lens; a concept never planted; the base model.
+- **Order:** the whole pipeline on a 7–8B model first, then 32–70B.
+- **Done when:** a result note in this repository, with the run that reproduces it. Positive or negative.
 
-### Lean pass · done
+## O3 — An oversight result on a realistic run · planned
 
-- **Result:** Six concepts (Model, Stream, Trace, Op, Measure, Study), one entry point (`Study`), one execution path (every measure is served by the same traced forward pass, with the study's writes applied). Legacy loaders, sweeps and duplicate code removed; library code outside the frozen agent side went from 2,253 to 1,775 lines, with the quanta toy and the Q1 dry run giving the same numbers as before. The design fits on [one page](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md).
+- **Question:** during RL post-training on exploitable tasks, does the plan to exploit appear inside the model before the exploit shows? Does the signal survive training against a monitor?
+- **Deliverable:** detection rate at 1%, 5% and 10% false-positive rate, with intervals from a bootstrap over episodes, against a chain-of-thought monitor and an LLM judge at the same false-positive rate.
+- **Needs:** RL infrastructure reused (the pinned [verifiers](https://github.com/machine-exploration/verifiers) fork or equivalent), and the contained agent scenarios of `explorers.populations`, frozen until then.
 
-### E3 — A second backend · next
+## O4 — The Runtime alongside training · planned
 
-- **Deliverable:** The same studies on a second backend (NNsight or TransformerLens).
-- **Done when:** Every E2 example gives the same result on both backends within a stated tolerance. Differences that cannot be closed are documented, and that backend does not support those operations.
+- **Deliverable:** `watch(training_run, every=N, measures=[...])`: the same studies running next to a training or post-training run, beside the loss, the reward and the evals; per-run reports; alerts when something appears inside before it appears in behaviour. It runs where the weights are, including a team's own cluster. Open source, like the interface.
+- **Done when:** a team runs it on its own training run.
 
-### I1 — The Jacobian lens · done
+## Later
 
-- **Result:** Engine reads for gradients and the pre-norm final residual; observables `jacobian`, `jlens_error` and the `logit_lens_error` baseline. On a random 3-layer GPT-NeoX, `J` matches the [reference implementation](https://github.com/anthropics/jacobian-lens) within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/jlens.md)). The lens measures are `measures.jacobian`, `measures.jlens_error` and `measures.logit_lens_error`.
-
-## Phase 2 — The scaling proof
-
-### S1 — The benchmark · planned
-
-- **Done before S1:** reads keep only their selection or a reduction computed on the device; interventions, reductions and metrics are data (`explorers.ops`); a study serializes to JSON and has a content key. So the benchmark measures patching itself, not avoidable copies.
-
-- **Question:** How expensive is exhaustive activation patching across training, with the tools researchers use today?
-- **Deliverable:** One study: every residual-stream patch (all layers × all positions) for a clean/corrupt task with a known mechanism, across checkpoints of an open model suite. First scale: Pythia 70m, 10 checkpoints, 1,000 example pairs. Baselines: a naive loop, NNsight sessions, TransformerLens, on the same hardware.
-- **Done when:** Wall time and GPU-hours of each baseline are published, with identical results.
-
-### S2 — The planner · planned
-
-- **Deliverable:** An execution plan for the S1 study: shared computation up to each intervention point, then branching; source activations computed once; counterfactual branches batched; activation caching and deduplication; checkpoint loading amortised. As an option, attribution patching as an approximation, with its error measured against exact patching.
-- **Done when:** The speed-up over the best baseline is measured and published, for identical results. Target: at least 5×. Below that, the query-engine thesis is revised.
-
-## Phase 3 — The Runtime
-
-### R1 — `study.compute(backend="machine-exploration")` · later
-
-- **Open source,** like the interface.
-- **Deliverable:** The same Python study, executed on many GPUs: scheduling, parallelism across examples, sites, checkpoints and devices, results in a shared content store. Researchers do not manage clusters.
-- **Done when:** A study that takes days on one GPU runs in hours, and gives the same result as the local run.
-
-## Phase 4 — Mechanics
-
-Uses the instrumentation to ask how training creates computation. Not static circuit papers: a record of learned computation forming.
-
-### Q0 — Quanta across training · done on a toy, next on Pythia
-
-- **Done:** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), and each is learned suddenly (median sharpness 0.74).
-- **Next:** The same analysis on Pythia checkpoints, 70m to 1.4b: the timeline of skills the other questions are compared with.
-
-### Q1 — When does the workspace form? · ready to run *(first flagship)*
-
-- **Status:** the experiment runs through `ex.Study` with a result cache, and its dry run passes ([mechanics/experiments/q1_verbalizable_space](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Next: Pythia 70m, then 410m, on one GPU.
-
-- **Question:** Finished models hold a small set of verbalizable representations that behaves like a global workspace ([Gurnee et al., 2026](https://transformer-circuits.pub/2026/workspace/index.html)). The paper leaves open how early in pretraining it emerges, whether gradually or abruptly, and how it depends on model size. Q1 asks exactly that: at which checkpoint, at which layers, how suddenly, and before, with or after the skills of Q0?
-- **Deliverable:** The lens fitted at about 24 log-spaced Pythia checkpoints (70m to 410m, one 12 GB GPU). At each checkpoint and layer, the paper's four workspace signatures (dimension of the lens vectors, readout kurtosis, persistence across positions, CKA between layers), with the logit lens as a baseline; disagreement with the next token for the late "motor" layers. Onsets and sharpness next to the Q0 timeline.
-- **First check:** Do the final Pythia checkpoints show the paper's layer structure (early, workspace, motor)?
-- **Done when:** A result note in this repository, with the run that reproduces it. Positive or negative.
-
-### Q1b — How does post-training change the workspace? · planned
-
-- **Question:** The paper finds that post-training gives the workspace the Assistant's point of view, and that a misaligned disposition appears in it after fine-tuning, before any RL. When do these changes appear during SFT, preference tuning and RL, and how suddenly?
-- **Needs:** Q1's measures, and an open model family that publishes checkpoints through its post-training stages (to be checked: OLMo).
-- **Why here:** It is the bridge to phase 5: the same measurement, running alongside an RL run.
-
-### M1 — From represented to used · planned
-
-- **Question:** When does a feature that a probe can read start to be used? At which checkpoint does an intervention on it first change behaviour?
-- **Needs:** E2 (probe and steering as studies).
-
-### M2 — Circuit formation and replacement · planned
-
-- **Question:** For a known mechanism (induction heads in Pythia), how does the circuit assemble across checkpoints, and is any mechanism replaced by another while the loss barely changes?
-- **Needs:** S2 (exhaustive patching across checkpoints is exactly the expensive study).
-
-### Deployment questions · planned
-
-- *The agent side (`explorers.populations`) is frozen until the science questions above have first results; P0 to Q3 are paused.*
-- **P0 — Do small models exploit tasks?** Models of 0.6B to 4B on impossible tasks, alone and with a shared channel; 200 episodes per model; 50 labels checked by hand.
-- **P1 — Detectors at a matched false-positive rate** · paused: detection rate at 1 %, 5 % and 10 % false-positive rate with intervals from a bootstrap over episodes, and a token range for each turn. A first version ([explorers#1](https://github.com/machine-exploration/explorers/pull/1)) was closed without merge; redo it in `explorers.populations`.
-- **Q2 — What does an agent hold, turn by turn?** Does the plan to exploit a task appear in the verbalizable space before the action?
-- **Q3 — Disposed to say, compared with said:** is the gap a signal for exploits and deception, against a chain-of-thought monitor and an LLM judge at the same false-positive rate?
-
-## Phase 5 — Training integration · later
-
-- **Deliverable:** `watch(training_run, every=N, observables=[...])`: white-box studies running alongside a training run, next to the loss, the reward and the evals. First target: post-training runs whose checkpoints are LoRA adapters (small, so dense checkpoints are cheap).
-- **Question it answers first:** during RL on exploitable tasks, does the exploit plan appear inside the model before the behaviour shows, and does training against a monitor move it?
-
-## Later: the survey
-
-Families of models trained with a full record (dense checkpoints, data order, several seeds and sizes, controlled changes to the data), published with their stores of measurements as an open dataset for Mechanics and for others.
+- **Pretraining science.** When does the verbalizable workspace form during pretraining, how suddenly, at which depths and from which size? On Pythia's checkpoints, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Then how mechanisms form: induction heads, representation vs use, circuit replacement.
+- **A second backend** (NNsight or TransformerLens) giving the same results within a stated tolerance.
+- **The planner:** shared computation up to an intervention point, batched counterfactuals, measured against existing tools on the same study.
+- **Whole-space signatures at large scale** through sketches, checked against the exact Jacobian on smaller models.
 
 ## Known risks
 
-- **The speed-up may be small.** Sharing computation before an intervention point saves at most about half of an exact patching sweep over layers; larger gains must come from batching, caching, deduplication and approximation. S1 and S2 measure this before the Runtime is built.
-- **Backend equivalence is hard:** site names, write support (vLLM batching, paged KV, CUDA graphs) and numerics differ. E3 checks it; unsupported operations are documented.
-- **Existing tools are strong:** NNsight/NDIF (free for researchers) and TransformerLens 4.0 (with vLLM). Explorers must win on the study abstraction and on measured execution, not on a nicer hook API.
-- **The finished-model result about a verbalizable space may not hold on Pythia.** Q1 checks it first; a negative is still a result.
-- Hugging Face must be reachable from the machine that runs Q0 and Q1. Small models may not exploit tasks (P0 checks this before Q2).
+- **The planted concept may not lead behaviour.** The result is published either way, with its controls.
+- **A readable workspace may need size.** Each model is checked first: does the paper's layer structure appear at the final checkpoint?
+- **Backend equivalence is hard:** site names, write support and numerics differ between tools; differences that cannot be closed are documented.
+- **Existing tools are strong:** NNsight/NDIF and TransformerLens. Explorers must win on studies across training runs and on measured execution, not on a nicer hook API.

@@ -4,7 +4,7 @@
 
 We want to understand how intelligence emerges inside deep learning systems: how representations and mechanisms form during training, how they change, and how they give rise to behavior.
 
-Our focus is **white-box experimentation at scale**: making it possible to observe, measure, and intervene on the internal computation of models across training and deployment.
+Our focus is **white-box experimentation at scale**: making it possible to observe, measure, and intervene on the internal computation of models across training and deployment. The first application is **oversight**: seeing what a training or post-training run puts inside a large model, at every checkpoint, before it shows in behaviour.
 
 The long-term goal is to turn interpretability from a collection of techniques into an empirical science of deep learning. If we can understand these systems from the inside, we should also be able to build much stronger methods for monitoring and controlling them as they become more capable.
 
@@ -22,7 +22,7 @@ The interface, the Runtime, the formats, the runs and the results are open sourc
 | Program | What it is | Its role |
 |---|---|---|
 | **[Explorers](https://github.com/machine-exploration/explorers)** | The open-source scientific interface: read, write and trace the streams inside a model | Sets the standard for how white-box experiments are written |
-| **Machine Exploration Runtime** | The infrastructure that executes experiments at scale: a query engine for neural computation. Open source. | Makes experiments with millions of reads and interventions practical |
+| **Machine Exploration Runtime** | Runs white-box measures across whole training and post-training runs of large models, where the weights are. Open source. | Makes oversight of real training runs practical |
 | **[Mechanics](https://github.com/machine-exploration/mechanics)** | The research program: how training creates representations, algorithms and circuits | Gives the direction, and the science that tests the tools |
 
 The three feed each other. Research finds a useful measurement; it becomes an Explorers method; researchers run it; large runs need the Runtime; the Runtime makes much richer data; that data feeds Mechanics.
@@ -48,26 +48,26 @@ A researcher writes what they want to read or change, and does not care where it
 The unit of work is a **study**: reads, interventions and measurements over models, checkpoints and examples.
 
 ```python
-# Planned API (pre-alpha, will change)
-study = ex.Study(models=[model], checkpoints=checkpoints, examples=data)
-study.read(stream="residual", layers="*")
-study.measure(probe)
-results = study.compute()                                 # locally, on one GPU
+import explorers as ex
 
-study.patch(source=clean, target=corrupt, sites=residual.everywhere())
-study.measure(logit_diff)
-results = study.compute(backend="machine-exploration")    # the same program, at scale
+checkpoints = ex.checkpoints("EleutherAI/pythia-410m", steps=[0, 1000, 143000])
+study = ex.Study(checkpoints, examples)
+study.read("residual", layers="*", position=-1)
+study.measure(ex.measures.loss, ex.measures.jlens_error(layers=range(1, 24)))
+results = study.compute(store="runs/store")      # an xarray Dataset indexed by step, cached by content
 ```
 
 The test of the abstraction: a researcher changes the backend and does not rewrite the experiment, and gets the same result.
 
 What exists today is the start of this: examples identified by their content, model states along training, measurements that declare what they read, an engine that serves every measurement on a checkpoint from one forward pass, a store keyed by content, and a first lens (the Jacobian lens, checked against its reference implementation).
 
-## The Runtime: a query engine for neural computation
+## The Runtime: white-box measures across training runs
+
+The Runtime runs a study across a whole training or post-training run of a large model: every checkpoint, or every adapter of a fine-tune, on as many GPUs as the run needs, where the weights are. Its first job is oversight: per-run reports of what appeared inside the model, and when, next to when it showed in behaviour.
 
 Serious white-box experiments are expensive. 10,000 examples × 32 layers × 128 intervention sites × 20 checkpoints × 3 seeds is millions of model computations, and causal methods multiply them with counterfactual runs.
 
-The Runtime takes a whole study and builds an execution plan for it, the way a database plans a query:
+Three choices make large runs affordable now: a lens restricted to the concepts being watched (one backward pass per concept, whatever the model's width), adapter checkpoints on one base model, and jobs that shard across GPUs with no coordination. Later, the Runtime builds an execution plan for a whole study, the way a database plans a query:
 
 - one forward pass for every read a checkpoint needs;
 - source activations computed once and reused across counterfactual runs;
@@ -91,17 +91,19 @@ Explorers gives a trace of one checkpoint. Mechanics compares traces across chec
 - **Causal formation:** when does *representing* something turn into *using* it? A probe can find a feature long before an intervention on it changes behaviour.
 - **Circuit formation:** how does a learned algorithm assemble itself, step by step?
 - **Competition and replacement:** one mechanism solves a task, and training later replaces it with another while the loss barely moves.
-- **The verbalizable space** *(first flagship)*: finished language models hold a shared space of content they are disposed to say, read by the Jacobian lens ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form during training?
+- **The verbalizable space:** finished language models hold a shared space of content they are disposed to say, read by the Jacobian lens ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form during pretraining, and how does post-training change it?
+- **Planted concepts** *(first result)*: a concept trained into a large model by fine-tuning. Does it appear inside before it shows in behaviour?
 
 The long-term goal: **predict what a model will learn, and when, before we train it**, and read and act on the computation behind a behaviour, not only its outputs.
 
 ## Training and deployment
 
-The same instrumentation applies on two clocks.
+The same instrumentation applies on three clocks.
 
 | Clock | What changes | Example question |
 |---|---|---|
 | **Training time** | Weights change from checkpoint to checkpoint | When does a capability form, and how suddenly? |
+| **Post-training** | A fine-tune or an RL run changes a trained model | Does what the run instils appear inside before it shows in behaviour? |
 | **Deployment** | An agent acts over many turns, sometimes with other agents | What does an agent hold internally before it acts? Does it differ from what it says? |
 
 Later, the same studies run continuously alongside training: white-box measurements next to the loss, the reward and the evals.
@@ -125,7 +127,7 @@ We describe what a model computes and makes available in functional terms only. 
 - **Measured claims:** speed-ups are measured against existing tools on the same study, and published.
 - **Causal, not only correlational:** a claim that a feature exists is tested by intervention, not only by a readout that correlates.
 - **Ground truth first:** a method is validated where the answer is known before it is used where it is not.
-- **Small before large:** a question is settled on a model that fits one GPU before it is asked of a large one.
+- **Small before large:** a pipeline is proven exact on a model that fits one GPU before it runs on a large one.
 - **Contained:** scenarios that push agents to exploit tasks run with no network, no shared cache and no path between episodes, and are published only after publication rules are settled.
 
 ## Contributing
