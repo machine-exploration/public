@@ -1,7 +1,5 @@
 # Machine Exploration
 
-**See inside the model.**
-
 We have spent billions of dollars of compute producing models nobody has mapped. Machine Exploration builds the open stack to run white-box interpretability methods at scale, across the whole life of a model: pretraining, post-training, evals and deployment.
 
 The evidence that this works is recent. Activation probes catch reward hacking in frontier open models about as well as chain-of-thought monitors, at a fraction of the cost ([Goodfire, 2026](https://arxiv.org/abs/2609.19101)). The Jacobian lens reads what a model is poised to say from any layer, without labels ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). Our first result puts the two side by side on the same runs: can a monitor that needs no labels match one that does?
