@@ -2,7 +2,7 @@
 
 We have spent billions of dollars of compute producing models nobody has mapped. Machine Exploration builds the open stack to run white-box interpretability methods at scale, across the whole life of a model: pretraining, post-training, evals and deployment.
 
-The evidence that this works is recent. Activation probes catch reward hacking in frontier open models about as well as chain-of-thought monitors, at a fraction of the cost ([Goodfire, 2026](https://arxiv.org/abs/2609.19101)). The Jacobian lens reads what a model is poised to say from any layer, without labels ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). Our first result puts the two side by side on the same runs: can a monitor that needs no labels match one that does?
+The evidence that this works is recent. Activation probes catch reward hacking in frontier open models about as well as chain-of-thought monitors, at a fraction of the cost ([Goodfire, 2026](https://arxiv.org/abs/2609.19101)). The Jacobian lens reads what a model is poised to say from any layer, without labels ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). Our first program watches a model learn to cheat: during reinforcement learning, does the representation of hacking appear inside before the hack rate rises, and can a monitor built from words alone, with no labels, see it?
 
 These monitors read activations the model already computes. They add no latency, cost almost nothing per token, never change the model's outputs, and work on any open model. Each targets one behaviour, and hundreds run in parallel as one matrix product per layer. Long term, the stack is where new white-box methods are discovered: every method scored against known answers, at every stage, at scale, with its cost.
 
@@ -51,9 +51,11 @@ R.compute(on=ex.Modal(gpu="H100"))                   # or ex.Local(), or your cl
 
 | | |
 |---|---|
-| **[Explorers](https://github.com/machine-exploration/explorers)** | The interface. Six concepts: Model, Stream, Trace, Op, Measure, Study. |
-| **Training stacks** | Whatever trains, serves and scores the model: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. Planned: other trainers as users ask, and a trainer backend for the large passes white-box methods need on 70B+ models. |
-| **[Mechanics](https://github.com/machine-exploration/mechanics)** | The research: how training creates representations, algorithms and circuits. |
+| **[Explorers](https://github.com/machine-exploration/explorers)** | The computer, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Study) that runs locally; it grows into the architecture above. |
+| **[Mechanics](https://github.com/machine-exploration/mechanics)** | The science: programs run on the computer, with their results. How training creates representations, algorithms and circuits, and what it puts inside a model before behaviour shows it. |
+| **Training stacks** | Whatever trains, serves and scores the model: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. Others as users ask. |
+
+What runs today:
 
 ```python
 import explorers as ex
@@ -70,8 +72,7 @@ Change the backend, keep the study, get the same result.
 ## First questions
 
 - **Watching a model learn to cheat.** Reinforcement learning on a coding environment where any pass is a reward hack, with every step's adapter kept. Does the internal representation of hacking rise before the hack rate does? A probe needs labelled hacks, so it cannot exist before the behaviour; a monitor built from words can watch from step 0. Controls: a planted concept (must be found) and an environment that cannot be hacked (must stay flat).
-- **The Monitor Arena.** An open leaderboard of white-box monitoring methods on real rollouts: how much each catches, what it costs and how far it scales. First track: reward hacking, where a Jacobian-lens monitor built from words is set against a difference-of-means probe.
-- **Reward hacking, without labels.** On an exploitable coding environment, does a Jacobian-lens monitor (no labels) catch hacks as well as a difference-of-means probe (labels), at a matched false-positive rate and at what cost? First checked on a planted concept, where the answer is known.
+- **The Monitor Arena.** An open leaderboard of white-box monitoring methods on real rollouts: how much each catches (at a matched false-positive rate), what it costs and how far it scales. First track: reward hacking on ImpossibleBench, where a Jacobian-lens monitor built from words is set against a difference-of-means probe and the logit lens.
 - **Replayed evals.** Every episode of an eval, replayed through the model: what does it hold before it answers (eval awareness, a plan to exploit)?
 - **The verbalizable space.** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form, and how does post-training change it?
 

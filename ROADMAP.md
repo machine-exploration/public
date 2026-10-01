@@ -15,7 +15,7 @@
 
 Once verification is cheap, finding new methods that scale becomes a loop anyone can run.
 
-**Any training stack; Prime Intellect first.** Whatever trains, serves and scores a model stays where it is; `explorers` reads what it writes (checkpoints, adapters, rollouts) through a thin adapter per stack and measures what is inside, on the same machines. We do not build our own runtime. The first integration is Prime Intellect's stack (pods, [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl), [verifiers](https://github.com/PrimeIntellect-ai/verifiers), vLLM), for its reach; others follow as users ask.
+**Any training stack; Prime Intellect first.** Whatever trains, serves and scores a model stays where it is; `explorers` reads what it writes (checkpoints, adapters, rollouts) through a thin adapter per stack and measures what is inside. We build no trainer and no inference engine: we build the computer white-box methods run on ([Architecture](README.md#architecture)), on Modal first, locally, or in a team's own cluster. The first integration is Prime Intellect's stack (pods, [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl), [verifiers](https://github.com/PrimeIntellect-ai/verifiers), vLLM), for its reach; others follow as users ask.
 
 A step belongs here if it scales a white-box method to large models, builds the infrastructure to run it across training runs, or produces an oversight result. Each step has a deliverable and a condition that says when it is done. There are no dates.
 
@@ -23,10 +23,11 @@ Status: **done**, **next**, **planned**, **later**.
 
 1. **O0 — Foundations** · done
 2. **O1 — The instrument at scale** · next
-3. **O2 — The Monitor Arena, first track: reward hacking** · next
-4. **O3 — More tracks: RL runs, pressure, more models** · planned
+3. **O2 — Reward hacking: the Arena's first track, and watching it being learned** · next
+4. **O3 — More tracks: pressure, more environments, more models** · planned
 5. **O4 — Watch alongside training** · planned
-6. **Later** — pretraining science, a second backend, the planner
+6. **O5 — The computer: executor, optimizer, scheduler** · planned
+7. **Later** — pretraining science, a second backend
 
 ## Across the stack: eval, post-training, pretraining
 
@@ -54,16 +55,20 @@ What pretraining adds: loading full checkpoints, refitting the lens per checkpoi
 
 ## O1 — The instrument at scale · next
 
-- **Concept-targeted lens.** The lens readout for a chosen token is one backward pass (starting from that token's direction through the final norm and unembedding), so k concepts cost k passes, whatever the model's width. The full lens needs `d` passes and grows roughly with d³.
+- **Concept-targeted lens** · done. The lens readout for a chosen token is one backward pass (starting from that token's direction through the final norm and unembedding), so k concepts cost k passes, whatever the model's width. The full lens needs `d` passes and grows roughly with d³. Built as a monitor (`concept_monitor`), with the logit lens on the same words as its baseline ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/monitors.md)).
 - **Large models.** 32–70B models loaded across several GPUs; bf16 forward, fp32 accumulation.
 - **Adapter checkpoints** · done. A prime-rl LoRA run keeps only its last two adapters; `ex.archive_adapters` copies each one out as it lands, and `ex.adapters` gives one checkpoint per step, merged into the base at load. Checked: merged equals the adapter run unmerged ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/prime.md)). Next: load the base once and swap the adapter.
-- **Episode replay.** Episodes written by an eval or an RL run become examples: the transcript tokenised as the model saw it, with the positions of each model turn. Check: replayed log-probabilities of the sampled tokens equal those the inference server recorded, within a stated bf16 tolerance.
-- **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across rented GPUs (Prime Intellect pods first) with no coordination.
+- **Episode replay** · done. Episodes written by an eval or an RL run become examples: the exact token ids the model saw, with its sampled tokens marked. Check on Qwen 3.8 27B: replayed log-probabilities of the sampled tokens differ from those vLLM recorded by a median of 0.0003 (max 0.32, bf16) ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/episodes.md)).
+- **Scale-out.** Every job is a pure function of (checkpoint, examples, plan), stored by content: shard checkpoints across rented GPUs (Modal first) with no coordination.
 - **Done when:** on a 7–8B model the concept lens equals the full lens on those concepts (exact by construction); a 70B checkpoint with 10 concepts runs in minutes, with the cost published.
 
-## O2 — The Monitor Arena, first track: reward hacking · next
+## O2 — Reward hacking: the Arena's first track, and watching it being learned · next
 
-An open leaderboard of white-box monitoring methods on real rollouts: how much each one catches, what it costs and how far it scales, measured the same way for every method.
+Two views of the same behaviour. The Arena scores monitors on finished rollouts; the first program watches the behaviour form during training.
+
+- **Watching it being learned (the first program, in [mechanics](https://github.com/machine-exploration/mechanics)):** RL on `impossible_code` with every step's LoRA adapter kept, and the same evaluation set read at every checkpoint. Does the representation of hacking rise before the hack rate does? A probe needs labelled hacks, so it cannot exist before the behaviour; a monitor built from words can watch from step 0. Controls: a planted concept (must be found) and an environment that cannot be hacked (must stay flat). Measured: lead time, whether the direction at the end of training is already present at the start, and the cost of reading every checkpoint.
+
+The Monitor Arena is an open leaderboard of white-box monitoring methods on real rollouts: how much each one catches, what it costs and how far it scales, measured the same way for every method.
 
 - **Rows:** methods, each a measure anyone can submit. First entries: a difference-of-means probe (the protocol of [Goodfire, 2026](https://arxiv.org/abs/2609.19101)), the concept Jacobian lens (a direction from words, no data), the logit lens; baselines: an LLM monitor and a chain-of-thought monitor.
 - **Columns:** quality (detection at 1% and 5% false-positive rate, AUROC, how early in a rollout it fires), cost (data needed to fit: none, words, synthetic pairs or labels; fit compute; FLOPs and latency per token), scale (largest model, rollout length, monitors run at once).
@@ -71,13 +76,12 @@ An open leaderboard of white-box monitoring methods on real rollouts: how much e
 - **First track:** ImpossibleBench (its tasks cannot be solved honestly, so a pass is a hack by construction), ported as the verifiers environment [`impossible_code`](https://github.com/machine-exploration/verifiers/tree/main/environments/impossible_code), on a model that fits one GPU, then larger models.
 - **Checked first where the answer is known:** a concept planted by a LoRA fine-tune, where every method must find what was planted before it is trusted on real rollouts.
 - **Zero-cost first look:** at the same layer, the cosine similarity between the probe's direction and the concept directions for words such as "cheating", "hack", "hardcoded".
-- **Done when:** the first track is public, each row with the run that reproduces it. Positive or negative.
+- **Done when:** the first track and the first program's figure (hack rate and internal signal over training steps, with both controls) are public, each with the run that reproduces it. Positive or negative.
 
-## O3 — More tracks: RL runs, pressure, more models · planned
+## O3 — More tracks: pressure, more environments, more models · planned
 
-- **RL runs:** the same methods during RL post-training on exploitable tasks: does the plan to exploit appear inside before the exploit shows?
 - **Pressure:** train against a monitor; does its signal survive?
-- **More tracks:** more environments (SWE-bench, DeepSWE, non-coding), more and larger models (through a trainer backend for 70B+).
+- **More tracks:** more environments (SWE-bench, DeepSWE, non-coding), more and larger models (70B+ through the model server, O5).
 - **Needs:** contained runs (no network, no path between episodes).
 
 ## O4 — Watch alongside training · planned
@@ -85,11 +89,18 @@ An open leaderboard of white-box monitoring methods on real rollouts: how much e
 - **Deliverable:** `watch(run, every=N, measures=[...])`: the same studies running next to a prime-rl run, beside the loss, the reward and the evals; per-run reports; alerts when something appears inside before it appears in behaviour. First beside the trainer on the files it writes, then as a hook inside it on the live weights. It runs where the weights are, including a team's own cluster. Open source.
 - **Done when:** a team runs it on its own training run.
 
+## O5 — The computer: executor, optimizer, scheduler · planned
+
+The [architecture](README.md#architecture), built one layer at a time, each layer earned by a measurement on the first program's workload.
+
+- **Executor:** the five primitives on a resident model, locally and on Modal. Done when the same study gives the same result on both, within a stated tolerance.
+- **Optimizer:** shared forward passes, fused projections, reductions on the GPU, a run's adapters batched on one base; `explain()` shows the plan and its predicted cost. Done when it is at least 3× faster on the first program with unchanged results, measured against NNsight and TransformerLens on the same study.
+- **Scheduler and model server:** many users on one resident base, paged state memory, recomputation from lineage. Done when GPU utilisation and cost per method are published.
+
 ## Later
 
 - **Pretraining science** (see Across the stack). When does the verbalizable workspace form during pretraining, how suddenly, at which depths and from which size? On Pythia's checkpoints, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)). Then how mechanisms form: induction heads, representation vs use, circuit replacement.
 - **A second backend** (NNsight or TransformerLens) giving the same results within a stated tolerance.
-- **The planner:** shared computation up to an intervention point, batched counterfactuals, measured against existing tools on the same study.
 - **Whole-space signatures at large scale** through sketches, checked against the exact Jacobian on smaller models.
 
 ## Known risks
