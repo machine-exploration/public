@@ -6,6 +6,8 @@ The evidence that this works is recent. Activation probes catch reward hacking i
 
 These monitors read activations the model already computes. They add no latency, cost almost nothing per token, never change the model's outputs, and work on any open model. Each targets one behaviour, and hundreds run in parallel as one matrix product per layer. Long term, the stack is where new white-box methods are discovered: every method scored against known answers, at every stage, at scale, with its cost.
 
+Two applications share the stack. **Safety:** monitors that catch what training or deployment puts inside a model before it shows in behaviour. **Interpretability research:** finding and verifying the representations and mechanisms a model computes, and how training builds them. A method that passes the same checks serves both: a monitor, and a finding about what the model represents.
+
 Works with any training stack; the first integration is [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
 ## Thesis
