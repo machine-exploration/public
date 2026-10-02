@@ -51,7 +51,7 @@ Status: **done**, **next**, **planned**, **later**.
 
 Experiments live in [mechanics](https://github.com/machine-exploration/mechanics) and call the explorers API.
 
-- **The prior across training ([`glp-activation`](https://github.com/machine-exploration/mechanics/tree/main/experiments/glp-activation)), first:** reproduce the generative meta-models of activations of [Luo et al., 2026](https://arxiv.org/abs/2602.06964) on Llama 3.2 1B and match their released priors; then fit a prior at every checkpoint of a small organism, then of Pythia. When does the distribution of internal states acquire its structure, and does it line up with when skills are learned? Hypotheses are fixed before the runs.
+- **The prior across training ([`glp-activation`](https://github.com/machine-exploration/mechanics/tree/main/experiments/glp-activation)), first:** reproduce the generative meta-models of activations of [Luo et al., 2026](https://arxiv.org/abs/2602.06964) on their Llama 1B model and match their released priors; then fit a prior at every checkpoint of a small organism (Pythia follows in O3). When does the distribution of internal states acquire its structure, and does it line up with when skills are learned? Hypotheses are fixed before the runs.
 
 Then rung 1 proper: small transformers pretrained from scratch on designed data, so the answer is known and solvable theory applies.
 
