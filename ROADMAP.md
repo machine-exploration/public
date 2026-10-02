@@ -21,8 +21,8 @@ Status: **done**, **next**, **planned**, **later**.
 
 1. **O0 — Foundations** · done
 2. **O1 — The instrument: train, read and intervene in one loop** · next
-3. **O2 — Rung 1: laws in controlled pretraining** · next
-4. **O3 — Rung 2: natural data, and the prior across training** · planned
+3. **O2 — The first experiments: the prior across training, and laws in controlled pretraining** · next
+4. **O3 — Rung 2: natural data** · planned
 5. **O4 — Rung 3: fine-tuning** · planned
 6. **O5 — Rung 4: reinforcement learning and reward hacking** · started
 7. **O6 — The instrument at scale** · planned
@@ -47,9 +47,13 @@ Status: **done**, **next**, **planned**, **later**.
 - **`stream`:** one model's activations fed to another training loop without storing them.
 - **Done when:** the same experiment gives the same result on Local and Modal within a stated tolerance, and the first experiment of O2 runs end to end.
 
-## O2 — Rung 1: laws in controlled pretraining · next
+## O2 — The first experiments: the prior across training, and laws in controlled pretraining · next
 
-Small transformers pretrained from scratch on designed data, so the answer is known and solvable theory applies. Experiments live in [mechanics](https://github.com/machine-exploration/mechanics).
+Experiments live in [mechanics](https://github.com/machine-exploration/mechanics) and call the explorers API.
+
+- **The prior across training ([`glp-activation`](https://github.com/machine-exploration/mechanics/tree/main/experiments/glp-activation)), first:** reproduce the generative meta-models of activations of [Luo et al., 2026](https://arxiv.org/abs/2602.06964) on Llama 3.2 1B and match their released priors; then fit a prior at every checkpoint of a small organism, then of Pythia. When does the distribution of internal states acquire its structure, and does it line up with when skills are learned? Hypotheses are fixed before the runs.
+
+Then rung 1 proper: small transformers pretrained from scratch on designed data, so the answer is known and solvable theory applies.
 
 - **The onset law:** skills planted at frequencies spanning two orders of magnitude; 3 sizes × 5 seeds × 2 initialisation scales. Prediction, written before the run: onset step inversely proportional to frequency, with a logarithmic dependence on initialisation scale, as in deep linear networks. Control: shuffled frequencies.
 - **Representation before use:** at every checkpoint, when each skill's concept becomes linearly readable, against when its accuracy jumps.
@@ -57,11 +61,11 @@ Small transformers pretrained from scratch on designed data, so the answer is kn
 - **Causation:** project out a skill's direction during training (`do=`), or move its data: the predicted change in onset must follow.
 - **Done when:** each result is public with the run that reproduces it, whether the prediction held or failed.
 
-## O3 — Rung 2: natural data, and the prior across training · planned
+## O3 — Rung 2: natural data · planned
 
 - **The laws on Pythia:** every checkpoint, known data order; frequencies estimated from the data. Do the rung-1 laws survive natural data?
 - **The verbalizable space:** when the space read by the Jacobian lens forms during pretraining, how suddenly, at which depths and from which size, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)).
-- **The prior across training:** a generative meta-model of activations ([Luo et al., 2026](https://arxiv.org/abs/2602.06964)) fitted at every checkpoint, first reproducing their released Llama 1B priors. When does the distribution of internal states acquire structure, and how does it relate to skill onsets?
+- **The prior on natural data:** `glp-activation` on Pythia's checkpoints, set against the onsets found on rung 1.
 - **Done when:** each question has a published answer with its run.
 
 ## O4 — Rung 3: fine-tuning · planned

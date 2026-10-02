@@ -68,9 +68,9 @@ results = study.compute(store="runs/store")   # xarray, indexed by step, cached 
 
 ## First questions
 
+- **The prior across training (rungs 1–2), the first experiment ([`glp-activation`](https://github.com/machine-exploration/mechanics/tree/main/experiments/glp-activation)).** A generative model of a network's activations ([Luo et al., 2026](https://arxiv.org/abs/2602.06964)), fitted at every checkpoint: when does the distribution of internal states acquire its structure, and does it appear with, before or after the skills?
 - **The onset law (rung 1).** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), each suddenly (median sharpness 0.74). Solvable models of deep linear networks predict more: each mode is learned in a sudden transition at a time inversely proportional to its strength. Does that prediction hold, quantitatively, for transformers, across sizes, seeds and initialisation scales?
 - **Representation before use (rung 1).** Does a concept become linearly readable before the model uses it, and how does the gap depend on frequency and size?
-- **The prior across training (rungs 1–2).** A generative model of a network's activations, fitted at every checkpoint: when does the distribution of internal states acquire its structure, and does it appear with, before or after the skills?
 - **The verbalizable space (rung 2).** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form during pretraining, and how does post-training change it?
 - **Watching a model learn to cheat (rung 4).** RL on a coding environment where any pass is a reward hack ([`impossible_code`](https://github.com/machine-exploration/verifiers/tree/main/environments/impossible_code)), every step's adapter kept. Does the representation of hacking rise before the hack rate does, and can a direction built from words alone, with no labels, see it? Monitors are compared on the same rollouts in an open Monitor Arena.
 
