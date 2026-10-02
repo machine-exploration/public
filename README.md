@@ -1,12 +1,20 @@
 # Machine Exploration
 
-We have spent billions of dollars of compute producing models nobody has mapped. Machine Exploration is building a science of deep learning: the laws by which training creates the computation inside a model. We build the open stack to run white-box methods at scale, across the whole life of a model: pretraining, post-training, evals and deployment.
+**Machine Exploration** is a research lab building a science of deep learning.
 
-Two fields hold the two halves of that science. **Learning mechanics** studies training as a dynamical system: loss curves, scaling, phase transitions, solvable models. **Mechanistic interpretability** studies what training produces: representations, circuits, algorithms. One has laws but does not see inside; the other sees inside but has no laws. The question that joins them: how do training dynamics create mechanisms, and how do mechanisms add up to the behaviour of training as a whole?
+We have spent billions of dollars of compute producing models nobody has mapped. Training is understood mostly by its outcomes: loss curves, benchmarks, behaviour. How training creates the computation inside a model, which mechanisms form, when, and why, is largely unknown, and what is known stays inside a few labs. We build the open stack to study it, across the whole life of a model: pretraining, post-training, evals and deployment.
 
-We start where the answer can be known: small models pretrained on data we design, so we know what should be learned and when, and where solvable theory makes predictions. Then we climb, changing one thing at a time: natural data, fine-tuning, reinforcement learning. Reward hacking during RL is where this science meets the most pressing problem in post-training today.
+**Science is better when shared.** We publish code, runs and results, including the negative ones. Every result comes with the run that reproduces it.
 
-Two applications share the stack. **Interpretability research:** finding and verifying the representations and mechanisms a model computes, and how training builds them. **Safety:** seeing what training puts inside a model before it shows in behaviour.
+**Solid foundations matter.** Our lab, Explorers, is built to train models, read their internals and change them, on any hardware, with every check exact by construction and every runtime held to the same contract. Infrastructure that is wrong produces science that is wrong.
+
+**Theory and experiment together.** We start where the answer can be known: small models trained on data we design, where theory makes predictions. We write the prediction down before the run, then climb toward real models, one change at a time.
+
+**Research and tools, co-designed.** The lab is built for the experiments we run, and every experiment tells us what the lab needs next. Others can use both.
+
+**Safety through understanding.** Training can put things inside a model before they show in behaviour. The same science that explains how mechanisms form is how we learn to see them early.
+
+**Measure what matters.** We report what a method finds, where it fails, and what it costs.
 
 Works with any training stack; the first integration is [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
@@ -15,6 +23,8 @@ Works with any training stack; the first integration is [Prime Intellect](https:
 A neural network is a learned computation. Its weights are the program; its internal streams carry the running state. We build the lab to train, read, write and trace both, and use it to find the laws by which training writes the program.
 
 ## The science
+
+Two fields hold the two halves of that science. **Learning mechanics** studies training as a dynamical system: loss curves, scaling, phase transitions, solvable models. **Mechanistic interpretability** studies what training produces: representations, circuits, algorithms. One has laws but does not see inside; the other sees inside but has no laws. The question that joins them: how do training dynamics create mechanisms, and how do mechanisms add up to the behaviour of training as a whole?
 
 One ladder; each rung changes exactly one thing from the rung below, so a law found on one rung can be tested on the next.
 
