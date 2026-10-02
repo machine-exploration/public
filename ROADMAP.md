@@ -13,19 +13,19 @@
 | Causation | Intervene during training: remove or inject a skill's data, or project out its direction, and the predicted change must follow |
 | Cost | FLOPs and GPU-seconds of every experiment, reported |
 
-**The instrument.** Explorers is a Tinker-like API: train a model, read it and change it in the same loop. Environments follow Prime Intellect's format (data in a recorded order plus a rubric); Modal is the first backend ([README](README.md#the-instrument)). We build no production trainer and no inference engine; trainers and serving stacks elsewhere are read through thin adapters, Prime Intellect's first.
+**The lab.** Explorers is the open lab the science runs in, with a Tinker-like API: train a model, read it and change it in the same loop, and run experiments at any scale without thinking about infrastructure. Environments follow Prime Intellect's format (data in a recorded order plus a rubric); Modal is the first backend ([README](README.md#the-lab)). We build no production trainer and no inference engine; trainers and serving stacks elsewhere are read through thin adapters, Prime Intellect's first.
 
 Each step has a deliverable and a condition that says when it is done. There are no dates.
 
 Status: **done**, **next**, **planned**, **later**.
 
 1. **O0 — Foundations** · done
-2. **O1 — The instrument: train, read and intervene in one loop** · next
+2. **O1 — The lab: train, read and intervene in one loop** · next
 3. **O2 — The first experiments: the prior across training, and laws in controlled pretraining** · next
 4. **O3 — Rung 2: natural data** · planned
 5. **O4 — Rung 3: fine-tuning** · planned
 6. **O5 — Rung 4: reinforcement learning and reward hacking** · started
-7. **O6 — The instrument at scale** · planned
+7. **O6 — The lab at scale** · planned
 8. **Later** — deployment, a second backend, whole-space signatures
 
 ## O0 — Foundations · done
@@ -38,13 +38,14 @@ Status: **done**, **next**, **planned**, **later**.
 - **Episode replay.** Rollouts of an eval or an RL run become examples, token for token. Check on Qwen 3.8 27B: replayed log-probabilities of sampled tokens differ from those vLLM recorded by a median of 0.0003 (max 0.32, bf16) ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/episodes.md)).
 - **A reproduced result.** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), each suddenly (median sharpness 0.74).
 
-## O1 — The instrument: train, read and intervene in one loop · next
+## O1 — The lab: train, read and intervene in one loop · next
 
 - **Primitives:** `model` (a config or a Hugging Face name, a seed, an initialisation scale), `forward_backward(batch, reads=, do=)` (loss, per-example losses, requested internals, interventions applied, one pass), `optim_step`, `sample`, `save`/`load`. Checked exactly against hand-written PyTorch on tiny models.
 - **`@experiment`:** one function over a grid of sizes, seeds, initialisation scales or checkpoints, run in parallel.
 - **Backends:** Local and Modal. Small models ship the whole training loop to the backend; large ones take one call per primitive on a resident model.
 - **Environments:** planted pretraining tasks in Prime Intellect's environment format (data in a recorded order plus a rubric), read through an adapter so the core does not import verifiers.
 - **`stream`:** one model's activations fed to another training loop without storing them.
+- **Fast iteration:** `cache()` for activations an experiment reuses (on a Modal Volume, keyed by content); warm containers during a session; only changed grid points recomputed; results streamed back while runs go; a smoke mode on a sliver of the data; automatic checkpoints and resume for long jobs.
 - **Done when:** the same experiment gives the same result on Local and Modal within a stated tolerance, and the first experiment of O2 runs end to end.
 
 ## O2 — The first experiments: the prior across training, and laws in controlled pretraining · next
@@ -82,7 +83,7 @@ The data now depends on the model, so cause and effect are entangled; the laws f
 - **The Monitor Arena:** methods compared on the same rollouts: a difference-of-means probe ([Goodfire, 2026](https://arxiv.org/abs/2609.19101)), a concept Jacobian-lens direction built from words, the logit lens; detection at 1% and 5% false-positive rate, cost, scale.
 - **Done when:** the figure (hack rate and internal signal over training steps, with both controls) and the first Arena track are public with their runs.
 
-## O6 — The instrument at scale · planned
+## O6 — The lab at scale · planned
 
 - **Large models:** 32–70B across several GPUs; bf16 forward, fp32 accumulation.
 - **Resident models:** one base loaded once and shared across a run's checkpoints and across users; adapters swapped or batched.

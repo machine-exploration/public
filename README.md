@@ -12,7 +12,7 @@ Works with any training stack; the first integration is [Prime Intellect](https:
 
 ## Thesis
 
-A neural network is a learned computation. Its weights are the program; its internal streams carry the running state. We build the instruments to read, write and trace both, and use them to find the laws by which training writes the program.
+A neural network is a learned computation. Its weights are the program; its internal streams carry the running state. We build the lab to train, read, write and trace both, and use it to find the laws by which training writes the program.
 
 ## The science
 
@@ -27,9 +27,9 @@ One ladder; each rung changes exactly one thing from the rung below, so a law fo
 
 On every rung the same quantities are measured, so results stack: **macroscopic** (per-skill loss and accuracy over steps, weight norms, local learning coefficient where affordable), **microscopic** (when each concept becomes linearly readable, in which layers, how similar across seeds, when the circuit exists by causal patching), and the **bridge** between them (the gap between micro and macro onsets, and whether theory predicts both). Predictions are written down before each run; controls (shuffled frequencies, planted concepts, environments that cannot be hacked) decide whether a result counts.
 
-## The instrument
+## The lab
 
-Explorers is a Tinker-like API for this science: train a model, read it and change it in the same loop. During training the activations are computed anyway, so reading them costs almost nothing. You write the experiment; the GPUs, sharding and storage stay hidden.
+Mechanics is the science; Explorers is the lab it runs in. **Explorers is the open lab for the science of deep learning:** train models, read and change their internals, and run experiments at any scale without thinking about infrastructure. Its API is Tinker-like: you train a model, read it and change it in the same loop. During training the activations are computed anyway, so reading them costs almost nothing.
 
 | Layer | What it is | Borrowed from |
 |---|---|---|
@@ -47,11 +47,13 @@ R = onset_law.run(on=ex.Modal())    # 30 runs in parallel; results indexed by si
 
 *A design, not yet built.* Small models ship their whole training loop to the backend; large models (Pythia, fine-tuning, RL) take one call per primitive on a resident model, as in Tinker. `stream` feeds one model's activations into another training loop without storing them, which is what methods such as [generative meta-models of activations](https://arxiv.org/abs/2602.06964) need. Rules that carry over: the same result on every backend within a stated tolerance, every result reproducible from config, seed, data order and code version, and cost reported with every run. Later, as experiments need it: resident models shared across runs and users, and a planner that shares forward passes between methods.
 
+**Fast iteration.** The loop "change an idea, see the result" sets the pace of the science, so the lab keeps it short: activations computed once and cached when an experiment reuses them (streamed when it does not); sweeps in one line; warm GPUs while you iterate; only changed combinations recomputed, since results are keyed by content; results streamed back while runs go, so losing ones can be stopped; a smoke mode (a minute on a sliver of the data) before every full run; long jobs that checkpoint and resume. What stays visible on purpose: seeds, data order, cost and the config of every run.
+
 ## Programs
 
 | | |
 |---|---|
-| **[Explorers](https://github.com/machine-exploration/explorers)** | The instrument, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Study) that reads models and the checkpoints of a run; it grows into the API above. |
+| **[Explorers](https://github.com/machine-exploration/explorers)** | The lab, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Study) that reads models and the checkpoints of a run; it grows into the API above. |
 | **[Mechanics](https://github.com/machine-exploration/mechanics)** | The science: the experiments on the ladder, their runs and their results. |
 | **Training stacks** | Whatever trains, serves and scores a model elsewhere: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. |
 
