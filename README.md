@@ -33,24 +33,23 @@ Mechanics is the science; Explorers is the lab it runs in. **Explorers is the op
 
 | Layer | What it is | Borrowed from |
 |---|---|---|
-| API | `model`, `forward_backward(reads=, do=)`, `optim_step`, `sample`, `stream`, `save`/`load`, and `@sweep` over a grid of sizes, seeds and checkpoints. You own the loop. | Tinker, plus the model's internals |
+| API | `model`, `forward_backward(reads=, do=)`, `optim_step`, `sample`, `stream`, `save`/`load`. A `Client` sends jobs to a `Runtime`. You own the loop. | Tinker, plus the model's internals |
 | Environments | Data in a recorded order plus a rubric that defines what is correct: planted pretraining tasks, fine-tuning sets, RL environments, one format on every rung | Prime Intellect ([verifiers](https://github.com/PrimeIntellect-ai/verifiers)) |
-| Backend | A CPU check locally, then GPU workers: [Modal](https://modal.com) now, other clusters later; the same experiment gives the same result on each within a stated tolerance | Modal |
+| Runtime | A CPU check locally (`LocalRuntime`, built), then GPU workers: [Modal](https://modal.com) now, other clusters later; every runtime passes one conformance suite and gives the same result within a stated tolerance | verifiers' runtime contract; Modal |
 
 ```python
-@ex.sweep(size=[1, 2, 4], seed=range(5), init_scale=[0.1, 1.0])
-def onset_law(check, size, seed, init_scale):
-    m = ex.model(ex.configs.tiny(scale=size), seed=seed, init_scale=init_scale)
-    return ex.train(m, planted_tasks(sliver=check), steps=100 if check else 20_000, every=100,
-                    measure=[per_task_accuracy, readability])
+client = ex.Client(ex.LocalRuntime())                  # CPU, a subprocess: checks the job and the contract
+client.run("experiments/q2_onset_law/train.py:main", size=1, seed=0, init_scale=0.1, steps=100)
 
-onset_law.check()                     # one grid point, on the CPU, on a sliver of the data
-R = onset_law.run(on=ex.Modal())      # 30 runs on GPU workers; stored runs are never recomputed
+client = ex.Client(ModalRuntime())                      # GPU workers, same contract (next)
+jobs = [client.submit("experiments/q2_onset_law/train.py:main", ex.Resources(gpu="A100"),
+                      size=n, seed=s, init_scale=i, steps=20_000)
+        for n in (1, 2, 4) for s in range(5) for i in (0.1, 1.0)]       # 30 jobs in parallel
 ```
 
-*A design, not yet built.* Small models ship their whole training loop to the backend; large models (Pythia, fine-tuning, RL) take one call per primitive on a resident model, as in Tinker. `stream` feeds one model's activations into another training loop without storing them, which is what methods such as [generative meta-models of activations](https://arxiv.org/abs/2602.06964) need. Rules that carry over: the same result on every backend within a stated tolerance, every result reproducible from config, seed, data order and code version, and cost reported with every run. Later, as experiments need it: resident models shared across runs and users, and a planner that shares forward passes between methods.
+*A design, not yet built, except the client and the CPU runtime.* Small models ship their whole training loop to the runtime; large models (Pythia, fine-tuning, RL) take one call per primitive on a resident model, as in Tinker. `stream` feeds one model's activations into another training loop without storing them, which is what methods such as [generative meta-models of activations](https://arxiv.org/abs/2602.06964) need. Rules that carry over: the same result on every runtime within a stated tolerance, every result reproducible from config, seed, data order and code version, and cost reported with every run. Later, as experiments need it: resident models shared across runs and users, and a planner that shares forward passes between methods.
 
-**Fast iteration.** The loop "change an idea, see the result" sets the pace of the science, so the lab keeps it short: activations computed once and cached when an experiment reuses them (streamed when it does not); sweeps in one line; warm GPUs while you iterate; only changed combinations recomputed, since results are keyed by content; results streamed back while runs go, so losing ones can be stopped; a smoke mode (a minute on a sliver of the data) before every full run; long jobs that checkpoint and resume. What stays visible on purpose: seeds, data order, cost and the config of every run.
+**Fast iteration.** The loop "change an idea, see the result" sets the pace of the science, so the lab keeps it short: activations computed once and cached when an experiment reuses them (streamed when it does not); a grid of jobs as a plain loop over `submit`; warm GPUs while you iterate; only changed jobs recomputed, since jobs and results are keyed by content; results streamed back while runs go, so losing ones can be stopped; a CPU check on `LocalRuntime` (a tiny model, a few batches) before every GPU run; long jobs that checkpoint and resume. What stays visible on purpose: seeds, data order, cost and the config of every run.
 
 ## Programs
 
@@ -84,7 +83,7 @@ results = experiment.compute(store="runs/store")   # xarray, indexed by step, ca
 - Open: code, formats, runs, results. Negative results too.
 - Reproducible: every result replays from config, seed, data order and code version.
 - Predictions first: what theory predicts is written down before the run.
-- Same experiment, same result on every backend, within a stated tolerance.
+- Same experiment, same result on every runtime and model backend, within a stated tolerance.
 - Causal: a mechanism is tested by intervention, not only by a readout.
 - Ground truth first: a method is validated where the answer is known.
 - Measured: speed claims are benchmarked against existing tools on the same experiment.

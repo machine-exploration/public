@@ -13,7 +13,7 @@
 | Causation | Intervene during training: remove or inject a skill's data, or project out its direction, and the predicted change must follow |
 | Cost | FLOPs and GPU-seconds of every experiment, reported |
 
-**The lab.** Explorers is the open lab the science runs in, with a Tinker-like API: train a model, read it and change it in the same loop, and run experiments at any scale without thinking about infrastructure. Environments follow Prime Intellect's format (data in a recorded order plus a rubric); Modal is the first backend ([README](README.md#the-lab)). We build no production trainer and no inference engine; trainers and serving stacks elsewhere are read through thin adapters, Prime Intellect's first.
+**The lab.** Explorers is the open lab the science runs in, with a Tinker-like API: train a model, read it and change it in the same loop, and run experiments at any scale without thinking about infrastructure. Environments follow Prime Intellect's format (data in a recorded order plus a rubric); Modal is the first GPU runtime ([README](README.md#the-lab)). We build no production trainer and no inference engine; trainers and serving stacks elsewhere are read through thin adapters, Prime Intellect's first.
 
 Each step has a deliverable and a condition that says when it is done. There are no dates.
 
@@ -26,7 +26,7 @@ Status: **done**, **next**, **planned**, **later**.
 5. **O4 — Rung 3: fine-tuning** · planned
 6. **O5 — Rung 4: reinforcement learning and reward hacking** · started
 7. **O6 — The lab at scale** · planned
-8. **Later** — deployment, a second backend, whole-space signatures
+8. **Later** — deployment, a second model backend, whole-space signatures
 
 ## O0 — Foundations · done
 
@@ -41,12 +41,11 @@ Status: **done**, **next**, **planned**, **later**.
 ## O1 — The lab: train, read and intervene in one loop · next
 
 - **Primitives:** `model` (a config or a Hugging Face name, a seed, an initialisation scale), `forward_backward(batch, reads=, do=)` (loss, per-example losses, requested internals, interventions applied, one pass), `optim_step`, `sample`, `save`/`load`. Checked exactly against hand-written PyTorch on tiny models.
-- **`@sweep`:** one function over a grid of sizes, seeds, initialisation scales or checkpoints, run in parallel · built.
-- **Sweeps and backends:** `@ex.sweep` (built): a grid of runs keyed by content, checked locally on the CPU, sent to GPU workers, Modal first. Small models ship the whole training loop to the backend; large ones take one call per primitive on a resident model.
+- **Client and runtimes:** a job is data (entrypoint, JSON arguments, code version, resources); a `Client` sends it to a `Runtime`. `LocalRuntime` (CPU, subprocess) checks the contract and passes the conformance suite · built. `ModalRuntime` (GPU workers) passes the same suite · next. Small models ship the whole training loop to the backend; large ones take one call per primitive on a resident model.
 - **Environments:** planted pretraining tasks in Prime Intellect's environment format (data in a recorded order plus a rubric), read through an adapter so the core does not import verifiers.
 - **`stream`:** one model's activations fed to another training loop without storing them.
-- **Fast iteration:** `cache()` for activations an experiment reuses (on a Modal Volume, keyed by content); warm containers during a session; only changed grid points recomputed; results streamed back while runs go; a smoke mode on a sliver of the data; automatic checkpoints and resume for long jobs.
-- **Done when:** a sweep checked on the CPU gives, on Modal, results that match a reference run within a stated tolerance, and the first experiment of O2 runs end to end.
+- **Fast iteration:** `cache()` for activations an experiment reuses (on a Modal Volume, keyed by content); warm containers during a session; only changed grid points recomputed; results streamed back while runs go; a CPU check on `LocalRuntime` before every GPU run; automatic checkpoints and resume for long jobs.
+- **Done when:** the Modal runtime passes the conformance suite, a job checked on `LocalRuntime` gives on Modal the same result within a stated tolerance, and the first experiment of O2 runs end to end.
 
 ## O2 — The first experiments: the prior across training, and laws in controlled pretraining · next
 
@@ -93,7 +92,7 @@ The data now depends on the model, so cause and effect are entangled; the laws f
 ## Later
 
 - **Deployment:** thin taps in serving engines, for monitors that passed the Arena.
-- **A second backend** (NNsight or TransformerLens) giving the same results within a stated tolerance.
+- **A second model backend** (NNsight or TransformerLens) giving the same results within a stated tolerance.
 - **Whole-space signatures at large scale** through sketches, checked against the exact Jacobian on smaller models.
 
 ## Known risks
