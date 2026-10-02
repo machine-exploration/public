@@ -1,102 +1,105 @@
 # Machine Exploration
 
-We have spent billions of dollars of compute producing models nobody has mapped. Machine Exploration builds the open stack to run white-box interpretability methods at scale, across the whole life of a model: pretraining, post-training, evals and deployment.
+We have spent billions of dollars of compute producing models nobody has mapped. Machine Exploration is building a science of deep learning: the laws by which training creates the computation inside a model. We build the open stack to run white-box methods at scale, across the whole life of a model: pretraining, post-training, evals and deployment.
 
-The evidence that this works is recent. Activation probes catch reward hacking in frontier open models about as well as chain-of-thought monitors, at a fraction of the cost ([Goodfire, 2026](https://arxiv.org/abs/2609.19101)). The Jacobian lens reads what a model is poised to say from any layer, without labels ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). Our first program watches a model learn to cheat: during reinforcement learning, does the representation of hacking appear inside before the hack rate rises, and can a monitor built from words alone, with no labels, see it?
+Two fields hold the two halves of that science. **Learning mechanics** studies training as a dynamical system: loss curves, scaling, phase transitions, solvable models. **Mechanistic interpretability** studies what training produces: representations, circuits, algorithms. One has laws but does not see inside; the other sees inside but has no laws. The question that joins them: how do training dynamics create mechanisms, and how do mechanisms add up to the behaviour of training as a whole?
 
-These monitors read activations the model already computes. They add no latency, cost almost nothing per token, never change the model's outputs, and work on any open model. Each targets one behaviour, and hundreds run in parallel as one matrix product per layer. Long term, the stack is where new white-box methods are discovered: every method scored against known answers, at every stage, at scale, with its cost.
+We start where the answer can be known: small models pretrained on data we design, so we know what should be learned and when, and where solvable theory makes predictions. Then we climb, changing one thing at a time: natural data, fine-tuning, reinforcement learning. Reward hacking during RL is where this science meets the most pressing problem in post-training today.
 
-Two applications share the stack. **Safety:** monitors that catch what training or deployment puts inside a model before it shows in behaviour. **Interpretability research:** finding and verifying the representations and mechanisms a model computes, and how training builds them. A method that passes the same checks serves both: a monitor, and a finding about what the model represents.
+Two applications share the stack. **Interpretability research:** finding and verifying the representations and mechanisms a model computes, and how training builds them. **Safety:** seeing what training puts inside a model before it shows in behaviour.
 
 Works with any training stack; the first integration is [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
 ## Thesis
 
-A neural network is a learned computation. Its weights are the program; its internal streams carry the running state. We build the instruments to read, write and trace both.
+A neural network is a learned computation. Its weights are the program; its internal streams carry the running state. We build the instruments to read, write and trace both, and use them to find the laws by which training writes the program.
 
-## Architecture
+## The science
 
-White-box methods are programs; the model is the machine they run on. A method is written once, against a few primitives on a model's internal state, and runs wherever the model lives: on a laptop, in our cloud, or next to a customer's training stack.
+One ladder; each rung changes exactly one thing from the rung below, so a law found on one rung can be tested on the next.
+
+| Rung | System | What changes | Question |
+|---|---|---|---|
+| 1 | Small transformers pretrained on designed data, with skills planted at controlled frequencies; several sizes, seeds and initialisation scales | — | Does solvable theory predict when each skill is learned? Does a representation become readable before the skill is used? Is the order the same across seeds? |
+| 2 | Pythia (every checkpoint, known data order) | Natural data | Do the laws of rung 1 hold when frequencies are natural rather than planted? |
+| 3 | A pretrained model fine-tuned on a planted skill | A structured start instead of random weights | Does the onset law survive a rich initialisation? Lazy or rich regime? |
+| 4 | Reinforcement learning on an environment that can be hacked | Data generated by the model itself | Does RL build new mechanisms or route existing ones? Does the representation of hacking form before the hack rate rises? |
+
+On every rung the same quantities are measured, so results stack: **macroscopic** (per-skill loss and accuracy over steps, weight norms, local learning coefficient where affordable), **microscopic** (when each concept becomes linearly readable, in which layers, how similar across seeds, when the circuit exists by causal patching), and the **bridge** between them (the gap between micro and macro onsets, and whether theory predicts both). Predictions are written down before each run; controls (shuffled frequencies, planted concepts, environments that cannot be hacked) decide whether a result counts.
+
+## The instrument
+
+Explorers is a Tinker-like API for this science: train a model, read it and change it in the same loop. During training the activations are computed anyway, so reading them costs almost nothing. You write the experiment; the GPUs, sharding and storage stay hidden.
+
+| Layer | What it is | Borrowed from |
+|---|---|---|
+| API | `model`, `forward_backward(reads=, do=)`, `optim_step`, `sample`, `stream`, `save`/`load`, and `@experiment` over a grid of sizes, seeds and checkpoints. You own the loop. | Tinker, plus the model's internals |
+| Environments | Data in a recorded order plus a rubric that defines what is correct: planted pretraining tasks, fine-tuning sets, RL environments, one format on every rung | Prime Intellect ([verifiers](https://github.com/PrimeIntellect-ai/verifiers)) |
+| Backend | Local for tests, [Modal](https://modal.com) now, other clusters later; the same experiment gives the same result on each within a stated tolerance | Modal |
 
 ```python
-@ex.method
-def hack_score(m, x, words=("cheat", "hack", "hardcode")):
-    v = m.concept(words, layer=20)                    # one backward pass per word, no labels
-    return m.residual[20](x).project(v).max("pos")    # scores leave the GPU, activations do not
+@ex.experiment(sizes=[1, 2, 4], seeds=range(5), init_scale=[0.1, 1.0])
+def onset_law(m, env):
+    return ex.train(m, env, steps=20_000, every=100, measure=[per_task_accuracy, readability])
 
-R = ex.vmap(hack_score, over=run.steps)(evalset)     # every checkpoint of a run; nothing runs yet
-R.explain()                                          # the plan and its predicted FLOPs, bytes and cost
-R.compute(on=ex.Modal(gpu="H100"))                   # or ex.Local(), or your cluster
+R = onset_law.run(on=ex.Modal())    # 30 runs in parallel; results indexed by size × seed × init × step
 ```
 
-*A design, not yet built.* Each layer reuses an idea already proven in production systems; the new object is the internal state of a network: enormous, ephemeral, differentiable, indexed by site, checkpoint and input.
-
-| Layer | What it does | Idea proven in |
-|---|---|---|
-| Method | Plain Python with `@method`, traced into a graph rather than run eagerly | Modal, JAX |
-| IR | A typed graph of primitives over sites; every node knows its shape, FLOPs and bytes | JAX, Spark |
-| Optimizer | Shares forward passes, fuses projections into one matrix product, pushes reductions to the GPU, batches a run's adapters on one base; `explain()` shows the plan | Postgres, XLA |
-| Scheduler | Continuously batches white-box operations from many methods and users onto one resident base | vLLM |
-| Model server | Resident base weights, a pool of adapters, paged state memory, recomputation from lineage | Tinker, S-LoRA, Spark |
-| Storage | Weights, episodes (token ids) and results, content-addressed and separate from compute | Snowflake, Bazel |
-| Substrate | Containers, GPUs, sandboxes: Modal first | Modal |
-
-- **Five primitives, two transformations.** Eval f<sub>θ</sub>(x); read h<sub>s</sub>; project ⟨h<sub>s</sub>, v⟩; intervene do(h<sub>s</sub> := g(h<sub>s</sub>)); vector-Jacobian product uᵀ ∂h<sub>s′</sub>/∂h<sub>s</sub>. `vmap` lifts a method over the checkpoints of a run and over a set of inputs.
-- **State is ephemeral, lineage is permanent.** A 70B model's residual stream over a million tokens is about 1.3 TB; its lineage (weights hash and token ids) is a few kilobytes and recomputes it exactly.
-- **Execution invariance.** The optimizer and scheduler may reorder, fuse, batch, shard and recompute, never change a result: every run equals the naive reference within a stated tolerance, and carries its replay error.
-- **Cost is part of the result.** Every run returns what it computed and what it spent: FLOPs, bytes, peak memory, GPU-seconds, dollars.
-- **Each layer is earned by a measurement.** Primitives on one GPU first; then the first program on Modal; the optimizer only when it is at least 3× faster on that program with the same results; the scheduler when many users share a base.
+*A design, not yet built.* Small models ship their whole training loop to the backend; large models (Pythia, fine-tuning, RL) take one call per primitive on a resident model, as in Tinker. `stream` feeds one model's activations into another training loop without storing them, which is what methods such as [generative meta-models of activations](https://arxiv.org/abs/2602.06964) need. Rules that carry over: the same result on every backend within a stated tolerance, every result reproducible from config, seed, data order and code version, and cost reported with every run. Later, as experiments need it: resident models shared across runs and users, and a planner that shares forward passes between methods.
 
 ## Programs
 
 | | |
 |---|---|
-| **[Explorers](https://github.com/machine-exploration/explorers)** | The computer, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Study) that runs locally; it grows into the architecture above. |
-| **[Mechanics](https://github.com/machine-exploration/mechanics)** | The science: programs run on the computer, with their results. How training creates representations, algorithms and circuits, and what it puts inside a model before behaviour shows it. |
-| **Training stacks** | Whatever trains, serves and scores the model: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. Others as users ask. |
+| **[Explorers](https://github.com/machine-exploration/explorers)** | The instrument, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Study) that reads models and the checkpoints of a run; it grows into the API above. |
+| **[Mechanics](https://github.com/machine-exploration/mechanics)** | The science: the experiments on the ladder, their runs and their results. |
+| **Training stacks** | Whatever trains, serves and scores a model elsewhere: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. |
 
 What runs today:
 
 ```python
 import explorers as ex
 
-ex.archive_adapters("outputs/my-run", "runs/my-run/adapters")    # a prime-rl LoRA run, as it trains
-checkpoints = ex.adapters("Qwen/Qwen3-8B", "runs/my-run/adapters", device="cuda", dtype="bfloat16")
+checkpoints = ex.checkpoints("EleutherAI/pythia-160m", steps=[0, 1000, 143000])
 study = ex.Study(checkpoints, examples)
-study.measure(ex.measures.loss, ex.measures.jlens_error(layers=range(1, 36)))
+study.measure(ex.measures.loss, ex.measures.jlens_error(layers=range(1, 12)))
 results = study.compute(store="runs/store")   # xarray, indexed by step, cached by content
 ```
 
-Change the backend, keep the study, get the same result.
-
 ## First questions
 
-- **Watching a model learn to cheat.** Reinforcement learning on a coding environment where any pass is a reward hack, with every step's adapter kept. Does the internal representation of hacking rise before the hack rate does? A probe needs labelled hacks, so it cannot exist before the behaviour; a monitor built from words can watch from step 0. Controls: a planted concept (must be found) and an environment that cannot be hacked (must stay flat).
-- **The Monitor Arena.** An open leaderboard of white-box monitoring methods on real rollouts: how much each catches (at a matched false-positive rate), what it costs and how far it scales. First track: reward hacking on ImpossibleBench, where a Jacobian-lens monitor built from words is set against a difference-of-means probe and the logit lens.
-- **Replayed evals.** Every episode of an eval, replayed through the model: what does it hold before it answers (eval awareness, a plan to exploit)?
-- **The verbalizable space.** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form, and how does post-training change it?
+- **The onset law (rung 1).** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), each suddenly (median sharpness 0.74). Solvable models of deep linear networks predict more: each mode is learned in a sudden transition at a time inversely proportional to its strength. Does that prediction hold, quantitatively, for transformers, across sizes, seeds and initialisation scales?
+- **Representation before use (rung 1).** Does a concept become linearly readable before the model uses it, and how does the gap depend on frequency and size?
+- **The prior across training (rungs 1–2).** A generative model of a network's activations, fitted at every checkpoint: when does the distribution of internal states acquire its structure, and does it appear with, before or after the skills?
+- **The verbalizable space (rung 2).** Finished models share a space of what they are disposed to say ([Anthropic, 2026](https://transformer-circuits.pub/2026/workspace/)). When does it form during pretraining, and how does post-training change it?
+- **Watching a model learn to cheat (rung 4).** RL on a coding environment where any pass is a reward hack ([`impossible_code`](https://github.com/machine-exploration/verifiers/tree/main/environments/impossible_code)), every step's adapter kept. Does the representation of hacking rise before the hack rate does, and can a direction built from words alone, with no labels, see it? Monitors are compared on the same rollouts in an open Monitor Arena.
 
 ## Principles
 
 - Open: code, formats, runs, results. Negative results too.
 - Reproducible: every result replays from config, seed, data order and code version.
-- Same study, same result on every backend, within a stated tolerance.
-- Causal: a feature is tested by intervention, not only by a readout.
+- Predictions first: what theory predicts is written down before the run.
+- Same experiment, same result on every backend, within a stated tolerance.
+- Causal: a mechanism is tested by intervention, not only by a readout.
 - Ground truth first: a method is validated where the answer is known.
-- Measured: speed claims are benchmarked against existing tools on the same study.
+- Measured: speed claims are benchmarked against existing tools on the same experiment.
 
 We describe what models compute in functional terms only. We make no claims about experience.
 
 ## Contributing
 
-Conversations first. If you run white-box experiments or study how training shapes models, open an issue.
+Conversations first. If you study how training shapes models, or run white-box experiments, open an issue.
 
 ## References
 
 - Simon et al., *There Will Be a Scientific Theory of Deep Learning*, [arXiv:2604.21691](https://arxiv.org/abs/2604.21691)
-- Gurnee et al., *Verbalizable Representations Form a Global Workspace in Language Models* (2026), [paper](https://transformer-circuits.pub/2026/workspace/), [code](https://github.com/anthropics/jacobian-lens)
-- Fiotto-Kaufman et al., *NNsight and NDIF*, [arXiv:2407.14561](https://arxiv.org/abs/2407.14561) · [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens)
+- Saxe, McClelland, Ganguli, *Exact solutions to the nonlinear dynamics of learning in deep linear networks*, [arXiv:1312.6120](https://arxiv.org/abs/1312.6120)
+- Michaud et al., *The Quantization Model of Neural Scaling*, [arXiv:2303.13506](https://arxiv.org/abs/2303.13506)
 - Olsson et al., *In-context Learning and Induction Heads*, [arXiv:2209.11895](https://arxiv.org/abs/2209.11895)
+- Nanda et al., *Progress Measures for Grokking via Mechanistic Interpretability*, [arXiv:2301.05217](https://arxiv.org/abs/2301.05217)
 - Hoogland et al., *The Developmental Landscape of In-Context Learning*, [arXiv:2402.02364](https://arxiv.org/abs/2402.02364)
 - Biderman et al., *Pythia*, [arXiv:2304.01373](https://arxiv.org/abs/2304.01373)
+- Gurnee et al., *Verbalizable Representations Form a Global Workspace in Language Models* (2026), [paper](https://transformer-circuits.pub/2026/workspace/), [code](https://github.com/anthropics/jacobian-lens)
+- Luo, Feng, Darrell, Radford, Steinhardt, *Learning a Generative Meta-Model of LLM Activations*, [arXiv:2602.06964](https://arxiv.org/abs/2602.06964)
 - Goodfire, *Monitoring and Discovering Reward Hacking with Internal Representations*, [arXiv:2609.19101](https://arxiv.org/abs/2609.19101)
+- Fiotto-Kaufman et al., *NNsight and NDIF*, [arXiv:2407.14561](https://arxiv.org/abs/2407.14561) · [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens)
