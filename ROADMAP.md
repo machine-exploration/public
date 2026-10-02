@@ -30,9 +30,9 @@ Status: **done**, **next**, **planned**, **later**.
 
 ## O0 — Foundations · done
 
-- **One library.** `explorers` is one package with six concepts: models with named streams, traces, ops (interventions as data), measures, studies, and a store keyed by content. The design fits on [one page](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md).
+- **One library.** `explorers` is one package with six concepts: models with named streams, traces, ops (interventions as data), measures, experiments, and a store keyed by content. The design fits on [one page](https://github.com/machine-exploration/explorers/blob/main/docs/interface.md).
 - **Streams: read, write, trace.** `residual`, `attn_out` and `mlp_out` on GPT-NeoX, Llama, GPT-2 and hybrid Qwen 3.5+ layouts. Reads equal what hand-written hooks return; a write changes exactly its target.
-- **The study.** Reads, writes, measures and patching (exact and attribution) over models or the checkpoints of a run, cached by content. Five canonical examples (a linear probe, steering, activation patching, attribution patching, a sparse autoencoder read) are checked against results that are exact by construction.
+- **The experiment.** Reads, writes, measures and patching (exact and attribution) over models or the checkpoints of a run, cached by content. Five canonical examples (a linear probe, steering, activation patching, attribution patching, a sparse autoencoder read) are checked against results that are exact by construction.
 - **The Jacobian lens.** Checked against the [reference implementation](https://github.com/anthropics/jacobian-lens): `J` agrees within 1.2e-7, and the top-5 readouts are identical at 54/54 (layer, position) pairs ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/jlens.md)). The concept-targeted lens (one backward pass per word, whatever the model's width) is built as a measure, with the logit lens on the same words as its baseline ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/monitors.md)).
 - **Runs as checkpoints.** A prime-rl LoRA run's adapters are archived as they land and merged at load; merged equals unmerged ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/prime.md)).
 - **Episode replay.** Rollouts of an eval or an RL run become examples, token for token. Check on Qwen 3.8 27B: replayed log-probabilities of sampled tokens differ from those vLLM recorded by a median of 0.0003 (max 0.32, bf16) ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/episodes.md)).
@@ -41,12 +41,12 @@ Status: **done**, **next**, **planned**, **later**.
 ## O1 — The lab: train, read and intervene in one loop · next
 
 - **Primitives:** `model` (a config or a Hugging Face name, a seed, an initialisation scale), `forward_backward(batch, reads=, do=)` (loss, per-example losses, requested internals, interventions applied, one pass), `optim_step`, `sample`, `save`/`load`. Checked exactly against hand-written PyTorch on tiny models.
-- **`@experiment`:** one function over a grid of sizes, seeds, initialisation scales or checkpoints, run in parallel.
-- **Backends:** Local and Modal. Small models ship the whole training loop to the backend; large ones take one call per primitive on a resident model.
+- **`@sweep`:** one function over a grid of sizes, seeds, initialisation scales or checkpoints, run in parallel · built.
+- **Sweeps and backends:** `@ex.sweep` (built): a grid of runs keyed by content, checked locally on the CPU, sent to GPU workers, Modal first. Small models ship the whole training loop to the backend; large ones take one call per primitive on a resident model.
 - **Environments:** planted pretraining tasks in Prime Intellect's environment format (data in a recorded order plus a rubric), read through an adapter so the core does not import verifiers.
 - **`stream`:** one model's activations fed to another training loop without storing them.
 - **Fast iteration:** `cache()` for activations an experiment reuses (on a Modal Volume, keyed by content); warm containers during a session; only changed grid points recomputed; results streamed back while runs go; a smoke mode on a sliver of the data; automatic checkpoints and resume for long jobs.
-- **Done when:** the same experiment gives the same result on Local and Modal within a stated tolerance, and the first experiment of O2 runs end to end.
+- **Done when:** a sweep checked on the CPU gives, on Modal, results that match a reference run within a stated tolerance, and the first experiment of O2 runs end to end.
 
 ## O2 — The first experiments: the prior across training, and laws in controlled pretraining · next
 

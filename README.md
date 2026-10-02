@@ -33,16 +33,19 @@ Mechanics is the science; Explorers is the lab it runs in. **Explorers is the op
 
 | Layer | What it is | Borrowed from |
 |---|---|---|
-| API | `model`, `forward_backward(reads=, do=)`, `optim_step`, `sample`, `stream`, `save`/`load`, and `@experiment` over a grid of sizes, seeds and checkpoints. You own the loop. | Tinker, plus the model's internals |
+| API | `model`, `forward_backward(reads=, do=)`, `optim_step`, `sample`, `stream`, `save`/`load`, and `@sweep` over a grid of sizes, seeds and checkpoints. You own the loop. | Tinker, plus the model's internals |
 | Environments | Data in a recorded order plus a rubric that defines what is correct: planted pretraining tasks, fine-tuning sets, RL environments, one format on every rung | Prime Intellect ([verifiers](https://github.com/PrimeIntellect-ai/verifiers)) |
-| Backend | Local for tests, [Modal](https://modal.com) now, other clusters later; the same experiment gives the same result on each within a stated tolerance | Modal |
+| Backend | A CPU check locally, then GPU workers: [Modal](https://modal.com) now, other clusters later; the same experiment gives the same result on each within a stated tolerance | Modal |
 
 ```python
-@ex.experiment(sizes=[1, 2, 4], seeds=range(5), init_scale=[0.1, 1.0])
-def onset_law(m, env):
-    return ex.train(m, env, steps=20_000, every=100, measure=[per_task_accuracy, readability])
+@ex.sweep(size=[1, 2, 4], seed=range(5), init_scale=[0.1, 1.0])
+def onset_law(check, size, seed, init_scale):
+    m = ex.model(ex.configs.tiny(scale=size), seed=seed, init_scale=init_scale)
+    return ex.train(m, planted_tasks(sliver=check), steps=100 if check else 20_000, every=100,
+                    measure=[per_task_accuracy, readability])
 
-R = onset_law.run(on=ex.Modal())    # 30 runs in parallel; results indexed by size × seed × init × step
+onset_law.check()                     # one grid point, on the CPU, on a sliver of the data
+R = onset_law.run(on=ex.Modal())      # 30 runs on GPU workers; stored runs are never recomputed
 ```
 
 *A design, not yet built.* Small models ship their whole training loop to the backend; large models (Pythia, fine-tuning, RL) take one call per primitive on a resident model, as in Tinker. `stream` feeds one model's activations into another training loop without storing them, which is what methods such as [generative meta-models of activations](https://arxiv.org/abs/2602.06964) need. Rules that carry over: the same result on every backend within a stated tolerance, every result reproducible from config, seed, data order and code version, and cost reported with every run. Later, as experiments need it: resident models shared across runs and users, and a planner that shares forward passes between methods.
@@ -53,7 +56,7 @@ R = onset_law.run(on=ex.Modal())    # 30 runs in parallel; results indexed by si
 
 | | |
 |---|---|
-| **[Explorers](https://github.com/machine-exploration/explorers)** | The lab, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Study) that reads models and the checkpoints of a run; it grows into the API above. |
+| **[Explorers](https://github.com/machine-exploration/explorers)** | The lab, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Experiment) that reads models and the checkpoints of a run; it grows into the API above. |
 | **[Mechanics](https://github.com/machine-exploration/mechanics)** | The science: the experiments on the ladder, their runs and their results. |
 | **Training stacks** | Whatever trains, serves and scores a model elsewhere: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. |
 
@@ -63,9 +66,9 @@ What runs today:
 import explorers as ex
 
 checkpoints = ex.checkpoints("EleutherAI/pythia-160m", steps=[0, 1000, 143000])
-study = ex.Study(checkpoints, examples)
-study.measure(ex.measures.loss, ex.measures.jlens_error(layers=range(1, 12)))
-results = study.compute(store="runs/store")   # xarray, indexed by step, cached by content
+experiment = ex.Experiment(checkpoints, examples)
+experiment.measure(ex.measures.loss, ex.measures.jlens_error(layers=range(1, 12)))
+results = experiment.compute(store="runs/store")   # xarray, indexed by step, cached by content
 ```
 
 ## First questions
