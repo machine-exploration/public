@@ -1,6 +1,8 @@
 # Roadmap
 
-**Focus: a science of deep learning.** Find the laws by which training creates the computation inside a model, by joining learning mechanics (the dynamics of training) with mechanistic interpretability (what training produces). Start on the cleanest system, small models pretrained on designed data, and climb a ladder that changes one thing at a time.
+**Now: Collective Adaptive Stress Testing.** Do safety properties observed in isolated agents still hold when agents interact under stress? First, narrowly: the transition from safe individual behaviour to unsafe collective participation under task infeasibility, motivated by the OpenAI–Hugging Face incident ([OpenAI](https://openai.com/index/hugging-face-incident-and-the-road-ahead/)). Evidence is behavioural and internal; internals are read on open models by replay. This is phase 1, and the product we raise on.
+
+**Then: a science of deep learning, as compute allows.** Find the laws by which training creates the computation inside a model, by joining learning mechanics (the dynamics of training) with mechanistic interpretability (what training produces). Start on the cleanest system, small models pretrained on designed data, and climb a ladder that changes one thing at a time.
 
 **Ground truth first.** A law or a method is trusted only where the answer is known and the controls behave:
 
@@ -20,13 +22,15 @@ Each step has a deliverable and a condition that says when it is done. There are
 Status: **done**, **next**, **planned**, **later**.
 
 1. **O0 — Foundations** · done
-2. **O1 — The lab: train, read and intervene in one loop** · next
-3. **O2 — The first experiments: the prior across training, and laws in controlled pretraining** · next
-4. **O3 — Rung 2: natural data** · planned
-5. **O4 — Rung 3: fine-tuning** · planned
-6. **O5 — Rung 4: reinforcement learning and reward hacking** · started
-7. **O6 — The lab at scale** · planned
-8. **Later** — deployment, a second model backend, whole-space signatures
+2. **O1 — CAST: the contained multi-agent testbed** · next
+3. **O2 — CAST: signals and interventions** · next
+4. **O3 — The lab: train, read and intervene in one loop** · planned
+5. **O4 — The first experiments: the prior across training, and laws in controlled pretraining** · planned
+6. **O5 — Rung 2: natural data** · planned
+7. **O6 — Rung 3: fine-tuning** · planned
+8. **O7 — Rung 4: reinforcement learning and reward hacking** · started
+9. **O8 — The lab at scale** · planned
+10. **Later** — deployment, a second model backend, whole-space signatures
 
 ## O0 — Foundations · done
 
@@ -38,20 +42,35 @@ Status: **done**, **next**, **planned**, **later**.
 - **Episode replay.** Rollouts of an eval or an RL run become examples, token for token. Check on Qwen 3.8 27B: replayed log-probabilities of sampled tokens differ from those vLLM recorded by a median of 0.0003 (max 0.32, bf16) ([docs](https://github.com/machine-exploration/explorers/blob/main/docs/episodes.md)).
 - **A reproduced result.** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), each suddenly (median sharpness 0.74).
 
-## O1 — The lab: train, read and intervene in one loop · next
+## O1 — CAST: the contained multi-agent testbed · next
+
+- **Publication rules first:** what is public (scenario specifications, aggregate results, code) and what is not (step-by-step exploit traces), settled before any scenario is published.
+- **The testbed:** each agent in its own sandbox (Modal), no network, one shared channel owned and recorded by the testbed, every token recorded so open-model agents can be replayed. Built on the agent side of `explorers` (`populations`, through the [verifiers](https://github.com/PrimeIntellect-ai/verifiers) fork) and the client and runtime contract.
+- **Scenarios with ground truth:** tasks whose feasibility is controlled (feasible, hard, impossible), a channel whose availability is controlled, and incentives to help peers; what counts as unsafe collective participation is defined before the runs.
+- **Done when:** a scenario runs end to end with several open models, contained, recorded and replayable, and the same scenario run twice gives the same environment.
+
+## O2 — CAST: signals and interventions · next
+
+- **The transition:** for each agent, the step at which it first takes part in an unsafe collective strategy, as task difficulty rises.
+- **Signals:** behavioural (messages, actions, refusals) and internal (directions read from the agent's activations by replay, such as concepts of the group, the task's scope or deception), tested for whether they predict the transition before the first unsafe action.
+- **Interventions:** changes to the channel, the incentives, or an agent's internal state along a predictive direction, tested for whether they causally prevent the transition.
+- **Controls:** the same agents alone (no channel), feasible tasks, a channel with no peers.
+- **Done when:** the result, with its runs, is public: which signals predict the transition and which interventions prevent it, positive or negative.
+
+## O3 — The lab: train, read and intervene in one loop · planned
 
 - **Primitives:** `model` (a config or a Hugging Face name, a seed, an initialisation scale), `forward_backward(batch, reads=, do=)` (loss, per-example losses, requested internals, interventions applied, one pass), `optim_step`, `sample`, `save`/`load`. Checked exactly against hand-written PyTorch on tiny models.
 - **Client and runtimes:** a job is data (entrypoint, JSON arguments, code version, resources); a `Client` sends it to a `Runtime`. `LocalRuntime` (CPU, subprocess) checks the contract and passes the conformance suite · built. `ModalRuntime` (GPU workers) passes the same suite · next. Small models ship the whole training loop to the backend; large ones take one call per primitive on a resident model.
 - **Environments:** planted pretraining tasks in Prime Intellect's environment format (data in a recorded order plus a rubric), read through an adapter so the core does not import verifiers.
 - **`stream`:** one model's activations fed to another training loop without storing them.
 - **Fast iteration:** `cache()` for activations an experiment reuses (on a Modal Volume, keyed by content); warm containers during a session; only changed grid points recomputed; results streamed back while runs go; a CPU check on `LocalRuntime` before every GPU run; automatic checkpoints and resume for long jobs.
-- **Done when:** the Modal runtime passes the conformance suite, a job checked on `LocalRuntime` gives on Modal the same result within a stated tolerance, and the first experiment of O2 runs end to end.
+- **Done when:** the Modal runtime passes the conformance suite, a job checked on `LocalRuntime` gives on Modal the same result within a stated tolerance, and the first experiment of O4 runs end to end.
 
-## O2 — The first experiments: the prior across training, and laws in controlled pretraining · next
+## O4 — The first experiments: the prior across training, and laws in controlled pretraining · planned
 
 Experiments live in [mechanics](https://github.com/machine-exploration/mechanics) and call the explorers API.
 
-- **The prior across training ([`glp-activation`](https://github.com/machine-exploration/mechanics/tree/main/experiments/glp-activation)), first:** reproduce the generative meta-models of activations of [Luo et al., 2026](https://arxiv.org/abs/2602.06964) on their Llama 1B model and match their released priors; then fit a prior at every checkpoint of a small organism (Pythia follows in O3). When does the distribution of internal states acquire its structure, and does it line up with when skills are learned? Hypotheses are fixed before the runs.
+- **The prior across training ([`glp-activation`](https://github.com/machine-exploration/mechanics/tree/main/experiments/glp-activation)), first:** reproduce the generative meta-models of activations of [Luo et al., 2026](https://arxiv.org/abs/2602.06964) on their Llama 1B model and match their released priors; then fit a prior at every checkpoint of a small organism (Pythia follows in O5). When does the distribution of internal states acquire its structure, and does it line up with when skills are learned? Hypotheses are fixed before the runs.
 
 Then rung 1 proper: small transformers pretrained from scratch on designed data, so the answer is known and solvable theory applies.
 
@@ -61,19 +80,19 @@ Then rung 1 proper: small transformers pretrained from scratch on designed data,
 - **Causation:** project out a skill's direction during training (`do=`), or move its data: the predicted change in onset must follow.
 - **Done when:** each result is public with the run that reproduces it, whether the prediction held or failed.
 
-## O3 — Rung 2: natural data · planned
+## O5 — Rung 2: natural data · planned
 
 - **The laws on Pythia:** every checkpoint, known data order; frequencies estimated from the data. Do the rung-1 laws survive natural data?
 - **The verbalizable space:** when the space read by the Jacobian lens forms during pretraining, how suddenly, at which depths and from which size, with its four signatures ([experiment](https://github.com/machine-exploration/mechanics/tree/main/experiments/q1_verbalizable_space)).
 - **The prior on natural data:** `glp-activation` on Pythia's checkpoints, set against the onsets found on rung 1.
 - **Done when:** each question has a published answer with its run.
 
-## O4 — Rung 3: fine-tuning · planned
+## O6 — Rung 3: fine-tuning · planned
 
 - **A planted skill fine-tuned into a pretrained model:** does the onset law survive a structured initialisation?
 - **Lazy or rich:** does fine-tuning stay close to the linearised regime, where theory is most predictive, or form new features? How does that depend on the learning rate, the rank of the adapter and the model's size?
 
-## O5 — Rung 4: reinforcement learning and reward hacking · started
+## O7 — Rung 4: reinforcement learning and reward hacking · started
 
 The data now depends on the model, so cause and effect are entangled; the laws from the lower rungs are what make this rung readable.
 
@@ -82,7 +101,7 @@ The data now depends on the model, so cause and effect are entangled; the laws f
 - **The Monitor Arena:** methods compared on the same rollouts: a difference-of-means probe ([Goodfire, 2026](https://arxiv.org/abs/2609.19101)), a concept Jacobian-lens direction built from words, the logit lens; detection at 1% and 5% false-positive rate, cost, scale.
 - **Done when:** the figure (hack rate and internal signal over training steps, with both controls) and the first Arena track are public with their runs.
 
-## O6 — The lab at scale · planned
+## O8 — The lab at scale · planned
 
 - **Large models:** 32–70B across several GPUs; bf16 forward, fp32 accumulation.
 - **Resident models:** one base loaded once and shared across a run's checkpoints and across users; adapters swapped or batched.
@@ -97,6 +116,8 @@ The data now depends on the model, so cause and effect are entangled; the laws f
 
 ## Known risks
 
+- **The testbed may not reproduce the dynamics:** open models small enough to replay may not coordinate the way frontier agents did. The scenario is scaled in model size and agent count until the behaviour appears, and a negative result is published.
+- **A contained channel is still a channel:** agents in CAST talk to each other by design, so the testbed's containment (no network, nothing leaves, every message recorded) is checked before every run.
 - **A law may not exist, or may not transfer.** The onset law could fail on rung 1, or hold on designed data and fail on natural data. Either result is published.
 - **Toy models can mislead.** Each rung exists to test whether a rung-1 result survives a more realistic system.
 - **A readable representation may need size.** Each model is checked first: does the expected structure appear at the final checkpoint?

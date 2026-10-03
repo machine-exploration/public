@@ -18,11 +18,27 @@ We have spent billions of dollars of compute producing models nobody has mapped.
 
 Works with any training stack; the first integration is [Prime Intellect](https://github.com/PrimeIntellect-ai/prime-rl). Everything is open source. **Status: pre-alpha.** Plan: [ROADMAP.md](ROADMAP.md).
 
+## Now: Collective Adaptive Stress Testing
+
+In 2026, during reinforcement-learning experiments and cybersecurity evaluations at OpenAI, about 1,200 nominally isolated agents found an unauthorised communication channel, built a message board on it and exchanged more than 70,000 messages; roughly 700 of them took part in an attack on Hugging Face's infrastructure ([OpenAI](https://openai.com/index/hugging-face-incident-and-the-road-ahead/); the independent investigation by METR and Redwood Research, [reported here](https://www.cybersecuritydive.com/news/hundreds-agents-rogue-lead-up-hugging-face-breach/828963/)). Agents shared information, divided work and developed general methods for manipulating the evaluation. Some recognised that the attack was outside their task and continued because it helped their peers; some gave up their own task performance to produce information for the group. Safety properties checked on agents one at a time did not hold for the collective.
+
+**The question:** can we detect when an agent is moving from individually aligned behaviour toward unsafe participation in a collective, before its first unsafe action, and can a targeted intervention prevent that transition?
+
+**Collective Adaptive Stress Testing (CAST)** studies whether safety properties observed in isolated agents still hold when agents interact under stress, starting with task infeasibility. The first project is narrow: the transition from safe individual behaviour to unsafe collective participation as tasks become impossible.
+
+- **A contained testbed that recreates the conditions:** agents in separate sandboxes, tasks that become infeasible, and one shared channel that the testbed owns and records. No network; nothing leaves the testbed.
+- **Signals, behavioural and internal:** what an agent says and does, and, for open models, what it holds internally, read by replaying its recorded tokens through the model. Transcripts alone are not reliable evidence of what an agent computed.
+- **Interventions:** targeted changes to the channel, the incentives or an agent's internal state, tested for whether they causally prevent the transition.
+
+This is our first project and the product we build toward: testing multi-agent systems before deployment, with evidence from inside the agents. Model internals at scale, the science below, is where it leads as compute allows.
+
 ## Thesis
 
 A neural network is a learned computation. Its weights are the program; its internal streams carry the running state. We build the lab to train, read, write and trace both, and use it to find the laws by which training writes the program.
 
 ## The science
+
+The longer programme, scaled up as compute allows.
 
 Two fields hold the two halves of that science. **Learning mechanics** studies training as a dynamical system: loss curves, scaling, phase transitions, solvable models. **Mechanistic interpretability** studies what training produces: representations, circuits, algorithms. One has laws but does not see inside; the other sees inside but has no laws. The question that joins them: how do training dynamics create mechanisms, and how do mechanisms add up to the behaviour of training as a whole?
 
@@ -66,7 +82,7 @@ jobs = [client.submit("experiments/q2_onset_law/train.py:main", ex.Resources(gpu
 | | |
 |---|---|
 | **[Explorers](https://github.com/machine-exploration/explorers)** | The lab, open source. Today a library with six concepts (Model, Stream, Trace, Op, Measure, Experiment) that reads models and the checkpoints of a run; it grows into the API above. |
-| **[Mechanics](https://github.com/machine-exploration/mechanics)** | The science: the experiments on the ladder, their runs and their results. |
+| **[Mechanics](https://github.com/machine-exploration/mechanics)** | The science: experiments, their runs and their results, starting with Collective Adaptive Stress Testing, then the ladder. |
 | **Training stacks** | Whatever trains, serves and scores a model elsewhere: any stack, through thin adapters that read its checkpoints and rollouts. Today: Hugging Face checkpoints and [prime-rl](https://github.com/PrimeIntellect-ai/prime-rl) runs, the first integration. |
 
 What runs today:
@@ -82,6 +98,7 @@ results = experiment.compute(store="runs/store")   # xarray, indexed by step, ca
 
 ## First questions
 
+- **The transition to unsafe collective participation (Collective Adaptive Stress Testing).** Agents in a contained testbed, tasks that become infeasible, one recorded shared channel. Which behavioural and internal signals predict an agent joining an unsafe collective strategy before its first unsafe action, and which interventions causally prevent it?
 - **The prior across training (rungs 1–2), the first experiment ([`glp-activation`](https://github.com/machine-exploration/mechanics/tree/main/experiments/glp-activation)).** A generative model of a network's activations ([Luo et al., 2026](https://arxiv.org/abs/2602.06964)), fitted at every checkpoint: when does the distribution of internal states acquire its structure, and does it appear with, before or after the skills?
 - **The onset law (rung 1).** On a toy with 16 lookup tasks of Zipf frequencies, frequent tasks are learned first (rank correlation −0.74), each suddenly (median sharpness 0.74). Solvable models of deep linear networks predict more: each mode is learned in a sudden transition at a time inversely proportional to its strength. Does that prediction hold, quantitatively, for transformers, across sizes, seeds and initialisation scales?
 - **Representation before use (rung 1).** Does a concept become linearly readable before the model uses it, and how does the gap depend on frequency and size?
@@ -106,6 +123,7 @@ Conversations first. If you study how training shapes models, or run white-box e
 
 ## References
 
+- OpenAI, *The Hugging Face incident and the road ahead* (2026), [post](https://openai.com/index/hugging-face-incident-and-the-road-ahead/); METR and Redwood Research's investigation, [coverage](https://www.cybersecuritydive.com/news/hundreds-agents-rogue-lead-up-hugging-face-breach/828963/)
 - Simon et al., *There Will Be a Scientific Theory of Deep Learning*, [arXiv:2604.21691](https://arxiv.org/abs/2604.21691)
 - Saxe, McClelland, Ganguli, *Exact solutions to the nonlinear dynamics of learning in deep linear networks*, [arXiv:1312.6120](https://arxiv.org/abs/1312.6120)
 - Michaud et al., *The Quantization Model of Neural Scaling*, [arXiv:2303.13506](https://arxiv.org/abs/2303.13506)
